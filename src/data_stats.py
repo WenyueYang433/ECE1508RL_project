@@ -1,5 +1,5 @@
 from collections import Counter
-
+import matplotlib.pyplot as plt
 from data_loader import MovieLensLoader
 
 
@@ -45,6 +45,30 @@ class MovieLensStats:
             return 0.0
         return float(tag_counts.mean())
 
+def plot_rating_hist(ratings):
+    plt.figure(figsize=(6, 4))
+    plt.hist(
+        ratings,
+        bins=[0.5 + 0.5 * i for i in range(11)],
+        color="#4C72B0",
+        edgecolor="white",
+    )
+    plt.title("Rating distribution")
+    plt.xlabel("Rating")
+    plt.ylabel("Count")
+    plt.tight_layout()
+
+
+def plot_top_genres(genre_counts):
+    labels = [g for g, _ in genre_counts]
+    values = [c for _, c in genre_counts]
+    plt.figure(figsize=(7, 4))
+    plt.bar(labels, values, color="#55A868")
+    plt.xticks(rotation=45, ha="right")
+    plt.title("Most common genres")
+    plt.ylabel("Movies")
+    plt.tight_layout()
+
 
 if __name__ == "__main__":
     loader = MovieLensLoader("data/ml-latest-small").load_all()
@@ -56,4 +80,8 @@ if __name__ == "__main__":
     print(stats.rating_distribution())
     print("Top genres:", stats.top_genres())
     print("Average tags per movie:", stats.average_tags_per_movie())
+
+    plot_rating_hist(loader.ratings["rating"])
+    plot_top_genres(stats.top_genres())
+    plt.show()
 
