@@ -21,9 +21,9 @@ ECE1508RL_project/
 │   │   └── reco_env.py         # Offline MovieLens environment and transition construction
 │   ├── agent/
 │   │   └── dqn_agent.py        # DQN network and offline training agent using ReplayBuffer
-│   ├── baselines/
-│   │   └── collaborative.py    # User-based collaborative filtering (UserCF) baseline
 │   └── utils/
+│       ├── collaborative.py    # User-based collaborative filtering (UserCF) baseline
+│       ├── hyperparameters.py    # Hyperparameters
 │       └── replay_buffer.py    # Simple experience replay buffer for DQN training
 └── README.md
 
