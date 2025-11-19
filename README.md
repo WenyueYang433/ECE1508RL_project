@@ -5,7 +5,6 @@ Lightweight sandbox for turning the MovieLens “ml-latest-small” dataset into
 ## Repository layout
 
 ```
-```
 ECE1508RL_project/
 ├── data/
 │   └── ml-latest-small/        # Raw CSVs from MovieLens (ratings, movies, tags, links)
@@ -19,20 +18,15 @@ ECE1508RL_project/
 │   ├──  evaluation.py          #  Model evaluation
 │   └── main.py                #  Train the DQN and save it 
 │   ├── env/
-│   │   ├── __init__.py         # Exposes RecoEnv from this package
 │   │   └── reco_env.py         # Offline MovieLens environment and transition construction
 │   ├── agent/
-│   │   ├── __init__.py         # Agent package marker
 │   │   └── dqn_agent.py        # DQN network and offline training agent using ReplayBuffer
 │   ├── baselines/
-│   │   ├── __init__.py         # Baseline models package marker
 │   │   └── collaborative.py    # User-based collaborative filtering (UserCF) baseline
 │   └── utils/
-│       ├── __init__.py         # Utility helpers package marker
 │       └── replay_buffer.py    # Simple experience replay buffer for DQN training
 └── README.md
 
-```
 ```
 
 ## Setup
