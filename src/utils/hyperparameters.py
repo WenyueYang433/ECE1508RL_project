@@ -14,3 +14,4 @@ class Hyperparameters:
         self.gamma = gamma
         self.target_update = target_update
         self.log_interval = log_interval
+        self.epsilon_decay = 0.999

@@ -22,10 +22,34 @@ class DatasetPrep:
             return 0.0
         segment = title[start + 1 : end]
         return float(segment) if segment.isdigit() else 0.0
+    
+    #get years, normalizes to 0,1, to avoid over large feature issue (compare to genre 0,1)
+    def _process_years(self, titles: pd.Series) -> pd.Series:
+        years = titles.apply(self._extract_year).astype("float32")
+
+        #impute missing years(0.0) with the median of valid years
+        #to avoid gradients of 0.0 movies be massive compared to normal movies
+        valid_mask = years > 0
+        if valid_mask.any():
+            median_year = years[valid_mask].median()
+            years[~valid_mask] = median_year
+
+        #normalize to 0, 1
+        min_y = years.min()
+        max_y = years.max()
+        
+        if max_y > min_y:
+            years = (years - min_y) / (max_y - min_y)
+        else:
+            years[:] = 0.0 # corner case: all movies from same year
+            
+        return years
+        
 
     def encode_movies(self) -> pd.DataFrame:
         genres = self.movies["genres"].str.get_dummies("|").astype("float32")
-        self.movies["year"] = self.movies["title"].apply(self._extract_year).astype("float32")
+        
+        self.movies["year"] = self._process_years(self.movies["title"])
 
         codes = pd.Categorical(self.movies["movieId"])
         series = pd.Series(range(len(codes.categories)), index=codes.categories)

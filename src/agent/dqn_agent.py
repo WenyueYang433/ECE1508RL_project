@@ -30,7 +30,6 @@ class Agent:
         else:
             self.device = device
             
-        print(f'device={self.device}')
 
         self.env = env
         self.hp = hyperparameters
@@ -79,6 +78,12 @@ class Agent:
             )
 
         print(f"[Agent] Preloaded {len(self.replay_buffer)} transitions into replay buffer.")
+    
+     
+    def update_epsilon(self):
+        # reduce epsilon by the decay factor
+        self.epsilon = max(0.01, self.epsilon * self.hp.epsilon_decay)
+
 
     #offline
     def train(self, n_updates):
@@ -94,6 +99,8 @@ class Agent:
                 continue
 
             self.apply_SGD(ended=(step % self.hp.target_update == 0))
+            
+            self.update_epsilon()
 
             avg_loss = (self.current_loss / self.episode_counts
                         if self.episode_counts > 0 else 0.0)
@@ -130,8 +137,6 @@ class Agent:
         rewards   = rewards.unsqueeze(1)      # [B, 1]
         terminals = terminals.unsqueeze(1)    # [B, 1] bool
         
-        # print(f"DEBUG: States Shape: {states.shape}") 
-        # print(f"DEBUG: Feature Size Expected: {self.onlineDQN.fc1.in_features}")
 
         # Q(s, a)
         Q_all = self.onlineDQN(states)              # [B, num_actions]

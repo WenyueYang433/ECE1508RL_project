@@ -10,6 +10,7 @@ from transitions import _item_matrix
 from agent.dqn_agent import DQN
 from utils.collaborative import collaborative_filtering_recommend
 
+#Calculates the performance metrics by comparing the agent's recommendations against the movies the user actually watched in the test set
 def eval_prcp(  train_df_id: pd.DataFrame, test_df_id: pd.DataFrame, n_items_total: int, recommend_func, N: int = 10) -> dict[str, float]:
     item_pop = train_df_id.groupby("movieId")["userId"].nunique()
     log_pop = np.log1p(item_pop)  # log(1+pop)
@@ -56,7 +57,8 @@ def eval_prcp(  train_df_id: pd.DataFrame, test_df_id: pd.DataFrame, n_items_tot
     popularity = pop_sum / rec_cnt
 
     return { f"Precision@{N}": precision,  f"Recall@{N}": recall,  "Coverage": coverage,  "Popularity": popularity,}
-   
+
+#Creates state for every user: calculate the average feature vector of all the movies they watched in the training data
 def build_user_state_vectors(train_df, item_matrix: np.ndarray) -> dict[int, np.ndarray]:
     user_movies = defaultdict(list)
     for _, row in train_df.iterrows():
@@ -75,6 +77,8 @@ def build_user_state_vectors(train_df, item_matrix: np.ndarray) -> dict[int, np.
 
 def make_dqn_recommender( dqn_model: DQN, user_state: dict[int, np.ndarray], seen_train: dict[int, set[int]],movie_ids_by_key: np.ndarray,n_actions: int,device: torch.device):
     dqn_model.eval()
+    
+    #pass state into DQN, mask out movies they have already seen, and selects the top N movies with the highest Q-values
     def recommend(user_id: int, N: int):
         u = user_id
         if u not in user_state:
@@ -103,6 +107,7 @@ def make_dqn_recommender( dqn_model: DQN, user_state: dict[int, np.ndarray], see
     return recommend
 
 def make_cf_recommender(train_df_id: pd.DataFrame):
+   
     def recommend(user_id: int, N: int):
         try:
             rec_df = collaborative_filtering_recommend(
