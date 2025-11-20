@@ -1,4 +1,6 @@
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from pathlib import Path
 import matplotlib.pyplot as plt
 from env.recommender_env import RecoEnv        
@@ -31,13 +33,16 @@ if __name__ == "__main__":
     plt.title("DQN training loss")
     plt.grid(alpha=0.3)
     plt.tight_layout()
-    plt.show()
     fig_path = PROJECT_ROOT / "models" / "dqn_loss.png"
+    fig_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(fig_path, dpi=150)
     print(f"Saved loss figure to {fig_path}")
+    plt.show()
+    
 
     #save model
     PROJECT_ROOT = Path(__file__).resolve().parents[1]
     model_path = PROJECT_ROOT / "models" / "dqn_movielens.pt"
+    model_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(agent.onlineDQN.state_dict(), model_path)
     print(f"Saved DQN to {model_path}")

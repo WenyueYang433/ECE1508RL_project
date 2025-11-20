@@ -29,6 +29,8 @@ class Agent:
                 self.device = torch.device("cpu")
         else:
             self.device = device
+            
+        print(f'device={self.device}')
 
         self.env = env
         self.hp = hyperparameters
@@ -69,11 +71,11 @@ class Agent:
         n = states.shape[0]
         for i in range(n):
             self.replay_buffer.push(
-                states[i],              # state
-                int(actions[i]),        # action
-                next_states[i],         # next_state
-                float(rewards[i]),      # reward
-                bool(dones[i]),         # done
+                s=states[i],              # state
+                a=int(actions[i]),        # action
+                r=float(rewards[i]),      # reward
+                s_next=next_states[i],    # next_state
+                d=bool(dones[i])         # done
             )
 
         print(f"[Agent] Preloaded {len(self.replay_buffer)} transitions into replay buffer.")
@@ -114,7 +116,7 @@ class Agent:
         return action
 
     def apply_SGD(self, ended: bool):
-        states, actions, next_states, rewards, terminals = \
+        states, actions, rewards, next_states, terminals = \
             self.replay_buffer.sample(self.hp.batch_size)
 
         states = torch.as_tensor(states, dtype=torch.float32, device=self.device)       # [B, F]
@@ -127,6 +129,9 @@ class Agent:
         actions   = actions.unsqueeze(1)      # [B, 1]
         rewards   = rewards.unsqueeze(1)      # [B, 1]
         terminals = terminals.unsqueeze(1)    # [B, 1] bool
+        
+        # print(f"DEBUG: States Shape: {states.shape}") 
+        # print(f"DEBUG: Feature Size Expected: {self.onlineDQN.fc1.in_features}")
 
         # Q(s, a)
         Q_all = self.onlineDQN(states)              # [B, num_actions]

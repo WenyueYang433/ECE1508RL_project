@@ -9,6 +9,12 @@ import pandas as pd
 from data_loader import MovieLensLoader
 from data_processor import DatasetPrep
 
+'''
+state: average feature vector of all movies the user watched 
+action: ID of the recommended movie 
+reward: the user's actual rating(normalized)
+'''
+
 
 def _item_matrix(movie_features: pd.DataFrame) -> Tuple[np.ndarray, List[str]]:
     keep_cols = [
