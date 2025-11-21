@@ -12,7 +12,7 @@ from data_processor import DatasetPrep
 '''
 state: average feature vector of all movies the user watched 
 action: ID of the recommended movie 
-reward: the user's actual rating(normalized)
+reward: the user's actual rating(normalized), with penalty for recommending seen movie 
 '''
 
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     ratings = prep.encode_ratings()
 
     item_matrix, feature_names = _item_matrix(movie_features)
-    transitions = build_offline_transitions(ratings, item_matrix, repeat_penalty=0.0)
+    transitions = build_offline_transitions(ratings, item_matrix, repeat_penalty=0.1)
 
     print("Item feature dim:", item_matrix.shape)
     print("Transitions:")

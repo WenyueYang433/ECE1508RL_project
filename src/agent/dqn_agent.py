@@ -155,6 +155,7 @@ class Agent:
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.onlineDQN.parameters(), max_norm=1.0)
         self.optimizer.step()
 
         self.current_loss += loss.item()

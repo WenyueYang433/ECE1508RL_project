@@ -46,7 +46,16 @@ class DatasetPrep:
         return years
         
 
-    def encode_movies(self) -> pd.DataFrame:
+    def encode_movies(self, keep_top_n: int = 1000) -> pd.DataFrame:
+        
+        # calculate movie popularity based on rating counts, keep only the top N
+        pop_counts = self.ratings["movieId"].value_counts()
+        top_ids = pop_counts.nlargest(keep_top_n).index
+        self.movies = self.movies[self.movies["movieId"].isin(top_ids)].copy()
+        self.ratings = self.ratings[self.ratings["movieId"].isin(top_ids)].copy()
+        
+        print(f"Filtered to top {keep_top_n} movies. Remaining Ratings: {len(self.ratings)}")
+        
         genres = self.movies["genres"].str.get_dummies("|").astype("float32")
         
         self.movies["year"] = self._process_years(self.movies["title"])

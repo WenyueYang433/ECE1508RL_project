@@ -14,11 +14,12 @@ if __name__ == "__main__":
         val_ratio=0.2,
         repeat_penalty=0.1,
         gamma=0.99,
+        keep_top_n=1000
     )
     hp = Hyperparameters()
 
     agent = Agent(env, hp)
-    losses = agent.train(n_updates=4_000)
+    losses = agent.train(n_updates=4000)
 
 
 

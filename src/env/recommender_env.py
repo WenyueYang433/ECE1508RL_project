@@ -8,12 +8,12 @@ from transitions import build_offline_transitions, _item_matrix
 
 
 class RecoEnv:
-    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, gamma: float = 0.99,) -> None:
+    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, gamma: float = 0.99,keep_top_n: int = 1000) -> None:
         loader = MovieLensLoader(data_dir).load_all()
         prep = DatasetPrep(loader)
 
         # Encoded film features & Scoring table
-        movie_features = prep.encode_movies()
+        movie_features = prep.encode_movies(keep_top_n=keep_top_n)
         rating_table = prep.encode_ratings()
 
         # Time division train/val
@@ -32,8 +32,8 @@ class RecoEnv:
         self.gamma: float = float(gamma)
 
         print(
-            f"[RecoEnv] state_dim={self.state_dim}, n_actions={self.n_actions}, "
-            f"train_transitions={self.transitions_train['state'].shape[0]}, "
+            f"[RecoEnv] state_dim={self.state_dim}, n_actions={self.n_actions},repeat_penalty={repeat_penalty} "
+            f"\ntrain_transitions={self.transitions_train['state'].shape[0]}, "
             f"val_transitions={self.transitions_val['state'].shape[0]}"
         )
 
