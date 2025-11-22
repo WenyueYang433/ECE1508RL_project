@@ -1,7 +1,5 @@
 from pathlib import Path
-
 import pandas as pd
-
 
 REQUIRED_COLUMNS = {
     "ratings.csv": ["userId", "movieId", "rating", "timestamp"],
