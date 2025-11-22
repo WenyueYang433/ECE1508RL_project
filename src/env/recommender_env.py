@@ -8,7 +8,7 @@ from transitions import build_offline_transitions, _item_matrix
 
 
 class RecoEnv:
-    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, gamma: float = 0.99,keep_top_n: int = 1000) -> None:
+    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, gamma: float = 0.99, keep_top_n: int = 1000, popularity_penalty: float = 0.0) -> None:
         loader = MovieLensLoader(data_dir).load_all()
         prep = DatasetPrep(loader)
 
@@ -23,8 +23,12 @@ class RecoEnv:
         self.feature_names = feature_names
 
         # offline transitions
-        self.transitions_train = build_offline_transitions(train_df, item_matrix, repeat_penalty=repeat_penalty)
-        self.transitions_val = build_offline_transitions(val_df, item_matrix, repeat_penalty=repeat_penalty)
+        self.transitions_train = build_offline_transitions(
+            train_df, item_matrix, repeat_penalty=repeat_penalty, popularity_penalty=popularity_penalty
+        )
+        self.transitions_val = build_offline_transitions(
+            val_df, item_matrix, repeat_penalty=repeat_penalty, popularity_penalty=popularity_penalty
+        )
 
 
         self.state_dim: int = self.transitions_train["state"].shape[1]
@@ -32,7 +36,7 @@ class RecoEnv:
         self.gamma: float = float(gamma)
 
         print(
-            f"[RecoEnv] state_dim={self.state_dim}, n_actions={self.n_actions},repeat_penalty={repeat_penalty} "
+            f"[RecoEnv] state_dim={self.state_dim}, n_actions={self.n_actions}, repeat_penalty={repeat_penalty}, popularity_penalty={popularity_penalty} "
             f"\ntrain_transitions={self.transitions_train['state'].shape[0]}, "
             f"val_transitions={self.transitions_val['state'].shape[0]}"
         )

@@ -31,8 +31,21 @@ def build_offline_transitions(
     ratings_df: pd.DataFrame,
     item_matrix: np.ndarray,
     repeat_penalty: float = 0.0,
+    popularity_penalty: float = 0.0,
 ) -> Dict[str, np.ndarray]:
     df = ratings_df.sort_values(["user_key", "timestamp"]).reset_index(drop=True)
+
+    # compute normalized popularity per movie_key (0..1)
+    if popularity_penalty:
+        counts = ratings_df["movie_key"].value_counts().to_dict()
+        pop = np.zeros(item_matrix.shape[0], dtype=np.float32)
+        for k, v in counts.items():
+            if 0 <= int(k) < item_matrix.shape[0]:
+                pop[int(k)] = v
+        maxp = float(pop.max()) if pop.max() > 0 else 1.0
+        pop_norm = pop / maxp
+    else:
+        pop_norm = np.zeros(item_matrix.shape[0], dtype=np.float32)
 
     dim = item_matrix.shape[1]
     transitions: Dict[str, List] = {
@@ -62,6 +75,10 @@ def build_offline_transitions(
 
             already_seen = action_key in watched
             reward = (rating_val / 5.0) - (repeat_penalty if already_seen else 0.0)
+
+            # popularity_penalty: subtract a small amount proportional to item popularity
+            if popularity_penalty and 0 <= action_key < len(pop_norm):
+                reward = reward - float(popularity_penalty * pop_norm[int(action_key)])
 
             if 0 <= action_key < len(item_matrix):
                 movie_vec = item_matrix[action_key]

@@ -8,9 +8,10 @@ from utils.replay_buffer import ReplayBuffer
 class DQN(nn.Module):
     def __init__(self, num_actions, feature_size):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(feature_size, 16)
-        self.fc2 = nn.Linear(16, 8)
-        self.out = nn.Linear(8, num_actions)
+        # increased hidden layer sizes for more model capacity
+        self.fc1 = nn.Linear(feature_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.out = nn.Linear(64, num_actions)
         self.act = nn.ReLU()
 
     def forward(self, x):
