@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 from typing import Dict, Tuple
 import pandas as pd
 from data_loader import MovieLensLoader
@@ -115,7 +116,9 @@ class DatasetPrep:
 
 
 if __name__ == "__main__":
-    loader = MovieLensLoader("data/ml-latest-small").load_all()
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    data_dir = PROJECT_ROOT / "data" / "ml-latest-small"
+    loader = MovieLensLoader(data_dir).load_all()
     prep = DatasetPrep(loader)
     movie_features = prep.encode_movies()
     user_features = prep.encode_users()

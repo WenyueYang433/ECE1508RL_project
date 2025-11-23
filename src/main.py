@@ -10,16 +10,21 @@ import torch
 
 
 if __name__ == "__main__":
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    data_dir = PROJECT_ROOT / "data" / "ml-latest-small"
     env = RecoEnv(
+        data_dir=str(data_dir),
         val_ratio=0.2,
         repeat_penalty=0.1,
         gamma=0.99,
-        keep_top_n=1000
+        keep_top_n=1000,
+        popularity_penalty=0.01,
     )
     hp = Hyperparameters()
 
     agent = Agent(env, hp)
-    losses = agent.train(n_updates=4000)
+    # Increased updates to give the agent more training steps
+    losses = agent.train(n_updates=2000)
 
 
 
