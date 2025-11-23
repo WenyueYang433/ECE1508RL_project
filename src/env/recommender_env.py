@@ -8,7 +8,7 @@ from transitions import build_offline_transitions, _item_matrix
 
 
 class RecoEnv:
-    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, gamma: float = 0.99, keep_top_n: int = 1000, popularity_penalty: float = 0.0) -> None:
+    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, keep_top_n: int = 1000, popularity_penalty: float = 0.0) -> None:
         loader = MovieLensLoader(data_dir).load_all()
         prep = DatasetPrep(loader)
 
@@ -33,7 +33,6 @@ class RecoEnv:
 
         self.state_dim: int = self.transitions_train["state"].shape[1]
         self.n_actions: int = item_matrix.shape[0]
-        self.gamma: float = float(gamma)
 
         print(
             f"[RecoEnv] state_dim={self.state_dim}, n_actions={self.n_actions}, repeat_penalty={repeat_penalty}, popularity_penalty={popularity_penalty} "

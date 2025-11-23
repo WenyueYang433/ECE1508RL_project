@@ -16,7 +16,6 @@ if __name__ == "__main__":
         data_dir=str(data_dir),
         val_ratio=0.2,
         repeat_penalty=0.1,
-        gamma=0.99,
         keep_top_n=1000,
         popularity_penalty=0.01,
     )
