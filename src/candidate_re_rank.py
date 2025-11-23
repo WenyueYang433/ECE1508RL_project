@@ -121,6 +121,12 @@ def main():
 
     # build user_state and seen_train
     item_matrix, _ = _item_matrix(movie_features)
+    movieid_to_features = {}
+    for _, row in mf_sorted.iterrows():
+        movie_id = int(row["movieId"])
+        movie_key = int(row["movie_key"])
+        if 0 <= movie_key < item_matrix.shape[0]:
+            movieid_to_features[movie_id] = item_matrix[movie_key]
     user_state = build_user_state_vectors(train_df, item_matrix)
     seen_train = defaultdict(set)
     for _, row in train_df.iterrows():
@@ -142,16 +148,37 @@ def main():
     n_items_total = len(mf_sorted["movieId"].unique())
 
     # evaluate
-    dqn_metrics = eval_prcp(train_df_id=train_df_id, test_df_id=test_df_id, n_items_total=n_items_total, recommend_func=recommender, N=10)
+    dqn_metrics = eval_prcp(
+        train_df_id=train_df_id,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=recommender,
+        item_features=movieid_to_features,
+        N=10,
+    )
 
     # baselines
     cf_recommender = make_cf_recommender(train_df_id)
-    cf_metrics = eval_prcp(train_df_id=train_df_id, test_df_id=test_df_id, n_items_total=n_items_total, recommend_func=cf_recommender, N=10)
+    cf_metrics = eval_prcp(
+        train_df_id=train_df_id,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=cf_recommender,
+        item_features=movieid_to_features,
+        N=10,
+    )
 
     pop_series = train_df_id.groupby("movieId")["userId"].nunique().sort_values(ascending=False)
     top_pop = list(pop_series.index[:10])
     pop_rec = lambda u, n: top_pop[:n]
-    pop_metrics = eval_prcp(train_df_id=train_df_id, test_df_id=test_df_id, n_items_total=n_items_total, recommend_func=pop_rec, N=10)
+    pop_metrics = eval_prcp(
+        train_df_id=train_df_id,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=pop_rec,
+        item_features=movieid_to_features,
+        N=10,
+    )
 
     print("\n=== Candidate Re-ranking Results ===")
     print("DQN re-rank:", dqn_metrics)

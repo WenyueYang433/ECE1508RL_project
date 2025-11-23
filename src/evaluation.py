@@ -1,28 +1,86 @@
 from __future__ import annotations
 from pathlib import Path
 from collections import defaultdict
+from typing import Dict, List
+import sys
 import numpy as np
 import pandas as pd
 import torch
-from data_loader import MovieLensLoader
-from data_processor import DatasetPrep
-from transitions import _item_matrix
-from agent.dqn_agent import DQN
-from utils.collaborative import collaborative_filtering_recommend
+
+SRC_DIR = Path(__file__).resolve().parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+try:
+    from data_loader import MovieLensLoader
+    from data_processor import DatasetPrep
+    from transitions import _item_matrix
+    from agent.dqn_agent import DQN
+    from utils.collaborative import collaborative_filtering_recommend
+except ImportError:  # pragma: no cover - fallback when executed as package
+    from .data_loader import MovieLensLoader
+    from .data_processor import DatasetPrep
+    from .transitions import _item_matrix
+    from .agent.dqn_agent import DQN
+    from .utils.collaborative import collaborative_filtering_recommend
+
+def _dcg(relevances: List[int]) -> float:
+    if not relevances:
+        return 0.0
+    gains = np.array(relevances, dtype=np.float32)
+    discounts = 1.0 / np.log2(np.arange(2, len(gains) + 2))
+    return float(np.sum(gains * discounts))
+
+
+def _ndcg(hits: List[int], ideal_hits: int) -> float:
+    if ideal_hits == 0:
+        return 0.0
+    dcg_val = _dcg(hits)
+    ideal_list = [1] * ideal_hits
+    ideal_dcg = _dcg(ideal_list)
+    if ideal_dcg == 0:
+        return 0.0
+    return dcg_val / ideal_dcg
+
+
+def _average_precision(hits: List[int], max_rel: int) -> float:
+    if max_rel == 0:
+        return 0.0
+    cum_hits = 0
+    ap = 0.0
+    for idx, rel in enumerate(hits, start=1):
+        if rel:
+            cum_hits += 1
+            ap += cum_hits / idx
+    return ap / max_rel if max_rel > 0 else 0.0
+
 
 #Calculates the performance metrics by comparing the agent's recommendations against the movies the user actually watched in the test set
-def eval_prcp(  train_df_id: pd.DataFrame, test_df_id: pd.DataFrame, n_items_total: int, recommend_func, N: int = 10) -> dict[str, float]:
+def eval_prcp(
+    train_df_id: pd.DataFrame,
+    test_df_id: pd.DataFrame,
+    n_items_total: int,
+    recommend_func,
+    item_features: Dict[int, np.ndarray],
+    N: int = 10,
+) -> dict[str, float]:
     item_pop = train_df_id.groupby("movieId")["userId"].nunique()
-    log_pop = np.log1p(item_pop)  # log(1+pop)
-
-    hit = 0
-    rec_cnt = 0
-    test_cnt = 0
-
-    all_rec_items = []
-    pop_sum = 0.0
+    pop_dict = item_pop.to_dict()
+    max_pop = max(pop_dict.values()) if pop_dict else 1.0
 
     users = test_df_id["userId"].unique()
+
+    per_user_precision: List[float] = []
+    per_user_recall: List[float] = []
+    per_user_ndcg: List[float] = []
+    per_user_map: List[float] = []
+    per_user_coverage_ratio: List[float] = []
+
+    all_rec_items = []
+    total_rec_items = 0
+    pop_sum = 0.0
+    novelty_sum = 0.0
+    hit_users = 0
 
     for u in users:
         test_items = set(test_df_id.loc[test_df_id["userId"] == u, "movieId"])
@@ -33,30 +91,66 @@ def eval_prcp(  train_df_id: pd.DataFrame, test_df_id: pd.DataFrame, n_items_tot
         if not rec_items:
             continue
 
-        rec_items = list(dict.fromkeys(rec_items))  
+        rec_items = list(dict.fromkeys(rec_items))
+        if not rec_items:
+            continue
 
-        inter = test_items.intersection(rec_items)
-        hit += len(inter)
-        rec_cnt += len(rec_items)
-        test_cnt += len(test_items)
+        hits = [1 if item in test_items else 0 for item in rec_items]
+        rel_hits = sum(hits)
+        if rel_hits > 0:
+            hit_users += 1
+
+        precision_u = rel_hits / len(rec_items)
+        recall_u = rel_hits / len(test_items) if test_items else 0.0
+        ideal_hits = min(len(test_items), len(rec_items))
+        ndcg_u = _ndcg(hits, ideal_hits)
+        ap_u = _average_precision(hits, min(len(test_items), len(rec_items), N))
+
+        per_user_precision.append(precision_u)
+        per_user_recall.append(recall_u)
+        per_user_ndcg.append(ndcg_u)
+        per_user_map.append(ap_u)
+
+        coverage_ratio = len(set(rec_items)) / float(n_items_total)
+        per_user_coverage_ratio.append(coverage_ratio)
 
         all_rec_items.extend(rec_items)
+        total_rec_items += len(rec_items)
+
         for i in rec_items:
-            if i in log_pop:
-                pop_sum += float(log_pop[i])
+            pop_val = pop_dict.get(int(i), 0.0)
+            pop_sum += np.log1p(pop_val)
+            novelty_sum += -np.log(((pop_val or 0.0) + 1e-9) / (max_pop + 1e-9))
 
-    if rec_cnt == 0 or test_cnt == 0:
-        return {  f"Precision@{N}": 0.0, f"Recall@{N}": 0.0,   "Coverage": 0.0,  "Popularity": 0.0, }
-
-    precision = hit / rec_cnt
-    recall = hit / test_cnt
+    if total_rec_items == 0:
+        return {
+            f"Precision@{N}": 0.0,
+            f"Recall@{N}": 0.0,
+            f"NDCG@{N}": 0.0,
+            f"MAP@{N}": 0.0,
+            "HitRate": 0.0,
+            "Coverage@Catalog": 0.0,
+            "Coverage@User": 0.0,
+            "Popularity": 0.0,
+            "Novelty": 0.0,
+        }
 
     unique_recs = len(set(all_rec_items))
-    coverage = unique_recs / float(n_items_total)
+    coverage_catalog = unique_recs / float(n_items_total)
 
-    popularity = pop_sum / rec_cnt
+    results = {
+        f"Precision@{N}": float(np.mean(per_user_precision)) if per_user_precision else 0.0,
+        f"Recall@{N}": float(np.mean(per_user_recall)) if per_user_recall else 0.0,
+        f"NDCG@{N}": float(np.mean(per_user_ndcg)) if per_user_ndcg else 0.0,
+        f"MAP@{N}": float(np.mean(per_user_map)) if per_user_map else 0.0,
+        "HitRate": hit_users / len(per_user_precision) if per_user_precision else 0.0,
+        "Coverage@Catalog": coverage_catalog,
+        "Coverage@User": float(np.mean(per_user_coverage_ratio)) if per_user_coverage_ratio else 0.0,
+        "Popularity": pop_sum / total_rec_items,
+        "Novelty": novelty_sum / total_rec_items,
+    }
 
-    return { f"Precision@{N}": precision,  f"Recall@{N}": recall,  "Coverage": coverage,  "Popularity": popularity,}
+    return results
 
 #Creates state for every user: calculate the average feature vector of all the movies they watched in the training data
 def build_user_state_vectors(train_df, item_matrix: np.ndarray) -> dict[int, np.ndarray]:
@@ -123,6 +217,16 @@ def make_cf_recommender(train_df_id: pd.DataFrame):
     return recommend
 
 
+def _print_metrics_block(title: str, metrics: dict[str, float | dict], indent: int = 0) -> None:
+    prefix = " " * indent
+    print(f"{prefix}{title}:")
+    for key, value in metrics.items():
+        if isinstance(value, dict):
+            _print_metrics_block(key, value, indent + 2)
+        else:
+            print(f"{' ' * (indent + 2)}{key}: {value:.4f}")
+
+
 ##########
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -139,6 +243,13 @@ def main():
     mf_sorted = movie_features.sort_values("movie_key")
     movie_ids_by_key = mf_sorted["movieId"].to_numpy()
     n_items_total = len(mf_sorted["movieId"].unique())
+    item_matrix, _ = _item_matrix(movie_features)
+    movieid_to_features: Dict[int, np.ndarray] = {}
+    for _, row in mf_sorted.iterrows():
+        movie_id = int(row["movieId"])
+        movie_key = int(row["movie_key"])
+        if 0 <= movie_key < item_matrix.shape[0]:
+            movieid_to_features[movie_id] = item_matrix[movie_key]
 
     # userId/movieId TABLE
     train_df_id = train_df.copy()
@@ -149,7 +260,6 @@ def main():
     test_df_id["movieId"] = movie_ids_by_key[test_df_id["movie_key"].to_numpy()]
 
     # DQN 
-    item_matrix, _ = _item_matrix(movie_features)
     user_state = build_user_state_vectors(train_df, item_matrix)
     seen_train = defaultdict(set)
     for _, row in train_df.iterrows():
@@ -167,20 +277,28 @@ def main():
     cf_recommender = make_cf_recommender(train_df_id)
     N = 10
 
-    dqn_metrics = eval_prcp(train_df_id=train_df_id,test_df_id=test_df_id,n_items_total=n_items_total, 
-                            recommend_func=dqn_recommender,  N=N)
+    dqn_metrics = eval_prcp(
+        train_df_id=train_df_id,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=dqn_recommender,
+        item_features=movieid_to_features,
+        N=N,
+    )
 
-    cf_metrics = eval_prcp( train_df_id=train_df_id,test_df_id=test_df_id,n_items_total=n_items_total,
-        recommend_func=cf_recommender, N=N)
+    cf_metrics = eval_prcp(
+        train_df_id=train_df_id,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=cf_recommender,
+        item_features=movieid_to_features,
+        N=N,
+    )
 
-    print(f"\n=== Top-{N} Evaluation (Precision / Recall / Coverage / Popularity) ===")
-    print("DQN:")
-    for k, v in dqn_metrics.items():
-        print(f"  {k}: {v*100:.2f}%" if "Precision" in k or "Recall" in k else f"  {k}: {v:.4f}")
-
-    print("\nCF (User-based collaborative):")
-    for k, v in cf_metrics.items():
-        print(f"  {k}: {v*100:.2f}%" if "Precision" in k or "Recall" in k else f"  {k}: {v:.4f}")
+    print(f"\n=== Top-{N} Evaluation (Precision / Recall / Coverage / Popularity / Advanced Metrics) ===")
+    _print_metrics_block("DQN", dqn_metrics)
+    print()
+    _print_metrics_block("CF (User-based collaborative)", cf_metrics)
 
 
 if __name__ == "__main__":

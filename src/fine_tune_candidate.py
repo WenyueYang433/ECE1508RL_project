@@ -17,6 +17,7 @@ import random
 from collections import defaultdict
 import time
 from collections import Counter
+from typing import Dict
 
 import numpy as np
 import torch
@@ -102,6 +103,12 @@ def fine_tune(args):
 
     # user_state and seen
     item_matrix, _ = _item_matrix(movie_features)
+    movieid_to_features: Dict[int, np.ndarray] = {}
+    for _, row in mf_sorted.iterrows():
+        movie_id = int(row["movieId"])
+        movie_key = int(row["movie_key"])
+        if 0 <= movie_key < item_matrix.shape[0]:
+            movieid_to_features[movie_id] = item_matrix[movie_key]
     user_state = build_user_state_vectors(train_df, item_matrix)
     seen_train = defaultdict(set)
     for _, row in train_df.iterrows():
@@ -141,8 +148,14 @@ def fine_tune(args):
     test_df_id = test_df_id.dropna(subset=["movieId"]).copy()
     test_df_id["movieId"] = test_df_id["movieId"].astype(int)
     n_items_total = len(mf_sorted["movieId"].unique())
-    before_metrics = eval_prcp(train_df_id=train_df_id_for_eval, test_df_id=test_df_id, n_items_total=n_items_total,
-                               recommend_func=dqn_recommender, N=10)
+    before_metrics = eval_prcp(
+        train_df_id=train_df_id_for_eval,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=dqn_recommender,
+        item_features=movieid_to_features,
+        N=10,
+    )
     print("Before fine-tune:", before_metrics)
 
     if args.debug:
@@ -250,10 +263,21 @@ def fine_tune(args):
             dqn.eval()
             dqn_recommender = make_dqn_recommender(dqn_model=dqn, user_state=user_state, seen_train=seen_train,
                                                    movie_ids_by_key=movie_ids_by_key, n_actions=n_actions, device=device)
-            metrics = eval_prcp(train_df_id=train_df_id_for_eval, test_df_id=test_df_id, n_items_total=n_items_total,
-                                recommend_func=dqn_recommender, N=10)
+            metrics = eval_prcp(
+                train_df_id=train_df_id_for_eval,
+                test_df_id=test_df_id,
+                n_items_total=n_items_total,
+                recommend_func=dqn_recommender,
+                item_features=movieid_to_features,
+                N=10,
+            )
             prec = metrics.get("Precision@10", 0.0)
-            print(f"  Eval @ step {step}: Precision@10={prec:.4f}, Coverage={metrics.get('Coverage'):.4f}, Popularity={metrics.get('Popularity'):.4f}")
+            coverage = metrics.get("Coverage@Catalog", metrics.get("Coverage", 0.0))
+            popularity = metrics.get("Popularity", 0.0)
+            print(
+                f"  Eval @ step {step}: Precision@10={prec:.4f}, "
+                f"Coverage@Catalog={coverage:.4f}, Popularity={popularity:.4f}"
+            )
             if prec > best_prec:
                 best_prec = prec
                 best_state = {k: v.cpu().clone() for k, v in dqn.state_dict().items()}
@@ -269,8 +293,14 @@ def fine_tune(args):
     dqn.eval()
     dqn_recommender = make_dqn_recommender(dqn_model=dqn, user_state=user_state, seen_train=seen_train,
                                            movie_ids_by_key=movie_ids_by_key, n_actions=n_actions, device=device)
-    after_metrics = eval_prcp(train_df_id=train_df_id_for_eval, test_df_id=test_df_id, n_items_total=n_items_total,
-                              recommend_func=dqn_recommender, N=10)
+    after_metrics = eval_prcp(
+        train_df_id=train_df_id_for_eval,
+        test_df_id=test_df_id,
+        n_items_total=n_items_total,
+        recommend_func=dqn_recommender,
+        item_features=movieid_to_features,
+        N=10,
+    )
     print("After fine-tune:", after_metrics)
 
     if args.debug:
