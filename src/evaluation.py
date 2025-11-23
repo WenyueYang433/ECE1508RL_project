@@ -160,6 +160,7 @@ def main():
 
     dqn = DQN(num_actions=n_actions, feature_size=feat_dim).to(device)
     state = torch.load(model_path, map_location=device)
+    dqn.load_state_dict(state)
 
     dqn_recommender = make_dqn_recommender( dqn_model=dqn, user_state=user_state, seen_train=seen_train, 
                                            movie_ids_by_key=movie_ids_by_key, n_actions=n_actions,device=device)
