@@ -1,4 +1,5 @@
 from __future__ import annotations
+import argparse
 from pathlib import Path
 from collections import defaultdict
 from typing import Dict, List
@@ -6,6 +7,7 @@ import sys
 import numpy as np
 import pandas as pd
 import torch
+import matplotlib.pyplot as plt
 
 SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
@@ -227,23 +229,78 @@ def _print_metrics_block(title: str, metrics: dict[str, float | dict], indent: i
             print(f"{' ' * (indent + 2)}{key}: {value:.4f}")
 
 
-##########
-def main():
-    PROJECT_ROOT = Path(__file__).resolve().parents[1]
-    data_dir = PROJECT_ROOT / "data" / "ml-latest-small"
-    model_path = PROJECT_ROOT / "models" / "dqn_movielens.pt"
+def _plot_metric_bars(metric_names, dqn_metrics, cf_metrics, out_path: Path, title: str, ylabel: str = "") -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    dqn_vals = [float(dqn_metrics.get(name, 0.0)) for name in metric_names]
+    cf_vals = [float(cf_metrics.get(name, 0.0)) for name in metric_names]
+
+    x = np.arange(len(metric_names))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(x - width / 2, dqn_vals, width, label="DQN", color="#4C72B0")
+    ax.bar(x + width / 2, cf_vals, width, label="CF", color="#55A868")
+    ax.set_xticks(x)
+    ax.set_xticklabels(metric_names, rotation=20, ha="right")
+    ax.set_ylabel(ylabel or "Score")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(axis="y", alpha=0.2, linestyle="--", linewidth=0.7)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def _visualize_metrics(
+    project_root: Path,
+    dqn_metrics: dict[str, float],
+    cf_metrics: dict[str, float],
+    top_k: int,
+) -> None:
+    figures_dir = project_root / "reports" / "figures"
+
+    ranking_metrics = [f"Precision@{top_k}", f"Recall@{top_k}", f"NDCG@{top_k}", f"MAP@{top_k}"]
+    _plot_metric_bars(
+        ranking_metrics,
+        dqn_metrics,
+        cf_metrics,
+        figures_dir / f"topk_metrics_k{top_k}.png",
+        title=f"Top-{top_k} Ranking Metrics",
+    )
+
+    catalog_metrics = ["HitRate", "Coverage@Catalog", "Coverage@User", "Novelty", "Popularity"]
+    _plot_metric_bars(
+        catalog_metrics,
+        dqn_metrics,
+        cf_metrics,
+        figures_dir / f"catalog_metrics_k{top_k}.png",
+        title="Catalog & Diversity Metrics",
+        ylabel="Score / Ratio",
+    )
+
+
+def run_evaluation(
+    model_path: Path | None = None,
+    data_dir: Path | None = None,
+    val_ratio: float = 0.1,
+    top_k: int = 10,
+) -> tuple[dict[str, float], dict[str, float]]:
+    project_root = Path(__file__).resolve().parents[1]
+    data_dir = data_dir or (project_root / "data" / "ml-latest-small")
+    model_path = model_path or (project_root / "models" / "dqn_movielens.pt")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loader = MovieLensLoader(str(data_dir)).load_all()
     prep = DatasetPrep(loader)
     movie_features = prep.encode_movies()
-    ratings = prep.encode_ratings()  # [user_key, movie_key, rating, timestamp]
-    train_df, test_df = prep.temporal_split(ratings, val_ratio=0.1)
+    ratings = prep.encode_ratings()
+    train_df, test_df = prep.temporal_split(ratings, val_ratio=val_ratio)
 
-    # movie_key -> movieId 
     mf_sorted = movie_features.sort_values("movie_key")
     movie_ids_by_key = mf_sorted["movieId"].to_numpy()
     n_items_total = len(mf_sorted["movieId"].unique())
     item_matrix, _ = _item_matrix(movie_features)
+
     movieid_to_features: Dict[int, np.ndarray] = {}
     for _, row in mf_sorted.iterrows():
         movie_id = int(row["movieId"])
@@ -251,7 +308,6 @@ def main():
         if 0 <= movie_key < item_matrix.shape[0]:
             movieid_to_features[movie_id] = item_matrix[movie_key]
 
-    # userId/movieId TABLE
     train_df_id = train_df.copy()
     test_df_id = test_df.copy()
     train_df_id["userId"] = train_df_id["user_key"]
@@ -259,7 +315,6 @@ def main():
     train_df_id["movieId"] = movie_ids_by_key[train_df_id["movie_key"].to_numpy()]
     test_df_id["movieId"] = movie_ids_by_key[test_df_id["movie_key"].to_numpy()]
 
-    # DQN 
     user_state = build_user_state_vectors(train_df, item_matrix)
     seen_train = defaultdict(set)
     for _, row in train_df.iterrows():
@@ -272,10 +327,15 @@ def main():
     state = torch.load(model_path, map_location=device)
     dqn.load_state_dict(state)
 
-    dqn_recommender = make_dqn_recommender( dqn_model=dqn, user_state=user_state, seen_train=seen_train, 
-                                           movie_ids_by_key=movie_ids_by_key, n_actions=n_actions,device=device)
+    dqn_recommender = make_dqn_recommender(
+        dqn_model=dqn,
+        user_state=user_state,
+        seen_train=seen_train,
+        movie_ids_by_key=movie_ids_by_key,
+        n_actions=n_actions,
+        device=device,
+    )
     cf_recommender = make_cf_recommender(train_df_id)
-    N = 10
 
     dqn_metrics = eval_prcp(
         train_df_id=train_df_id,
@@ -283,7 +343,7 @@ def main():
         n_items_total=n_items_total,
         recommend_func=dqn_recommender,
         item_features=movieid_to_features,
-        N=N,
+        N=top_k,
     )
 
     cf_metrics = eval_prcp(
@@ -292,13 +352,43 @@ def main():
         n_items_total=n_items_total,
         recommend_func=cf_recommender,
         item_features=movieid_to_features,
-        N=N,
+        N=top_k,
     )
 
-    print(f"\n=== Top-{N} Evaluation (Precision / Recall / Coverage / Popularity / Advanced Metrics) ===")
+    return dqn_metrics, cf_metrics
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Offline evaluation for MovieLens DQN.")
+    parser.add_argument("--model-path", type=Path, default=None, help="Checkpoint to evaluate.")
+    parser.add_argument("--data-dir", type=Path, default=None, help="MovieLens data directory.")
+    parser.add_argument("--val-ratio", type=float, default=0.1, help="Validation split ratio.")
+    parser.add_argument("--top-k", type=int, default=10, help="Top-K cutoff for ranking metrics.")
+    parser.add_argument(
+        "--no-plots",
+        action="store_true",
+        help="Disable saving matplotlib comparison plots.",
+    )
+    args = parser.parse_args()
+
+    dqn_metrics, cf_metrics = run_evaluation(
+        model_path=args.model_path,
+        data_dir=args.data_dir,
+        val_ratio=args.val_ratio,
+        top_k=args.top_k,
+    )
+
+    print(
+        f"\n=== Top-{args.top_k} Evaluation (Precision / Recall / Coverage / Popularity / Advanced Metrics) ==="
+    )
     _print_metrics_block("DQN", dqn_metrics)
     print()
     _print_metrics_block("CF (User-based collaborative)", cf_metrics)
+
+    if not args.no_plots:
+        project_root = Path(__file__).resolve().parents[1]
+        _visualize_metrics(project_root, dqn_metrics, cf_metrics, args.top_k)
+        print("\nSaved metric comparison plots to reports/figures/.")
 
 
 if __name__ == "__main__":
