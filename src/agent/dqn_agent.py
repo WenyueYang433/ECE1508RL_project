@@ -35,15 +35,27 @@ class Agent:
 
 
  
-        self.onlineDQN = DQN(num_actions=self.num_actions,  feature_size=feature_size).to(self.device)
-        self.targetDQN = DQN(num_actions=self.num_actions, feature_size=feature_size).to(self.device)
+        self.onlineDQN = DQN(num_actions=self.num_actions,  
+                             feature_size=feature_size,
+                             hidden_dim=self.hp.hidden_dim, 
+                             dropout_rate=self.hp.dropout_rate).to(self.device)
+        self.targetDQN = DQN(num_actions=self.num_actions, 
+                             feature_size=feature_size,
+                             hidden_dim=self.hp.hidden_dim,  
+                             dropout_rate=self.hp.dropout_rate).to(self.device)
         self.targetDQN.load_state_dict(self.onlineDQN.state_dict())
         self.targetDQN.eval()
+        
+        print(self.onlineDQN)
 
         self.loss_function = nn.MSELoss()
-        self.optimizer = optim.Adam(self.onlineDQN.parameters(),    lr=self.hp.learning_rate)
+        self.optimizer = optim.Adam(
+            self.onlineDQN.parameters(), 
+            lr=self.hp.learning_rate, 
+            weight_decay=getattr(self.hp, "weight_decay", 1e-5)
+        )
 
-        #
+        
         self._preload_buffer_from_env()
 
     def _preload_buffer_from_env(self, split: str = "train"):
@@ -118,6 +130,7 @@ class Agent:
                 if save_path and ndcg >= best_ndcg:
                     best_ndcg = ndcg
                     torch.save(self.onlineDQN.state_dict(), save_path)
+                    print("--- Best Model Saved!")
         
         return history
 
@@ -148,17 +161,26 @@ class Agent:
         terminals = terminals.unsqueeze(1)    # [B, 1] bool
         
 
-        # Q(s, a)
+        # Q(s, a): current q from Online Network
         Q_all = self.onlineDQN(states)              # [B, num_actions]
         Q_hat = Q_all.gather(1, actions)            # [B, 1]
 
         # r + gamma * max_a' Q_target(s', a') * (1 - done)
         with torch.no_grad():
-            Q_next_all = self.targetDQN(next_states)                     # [B, num_actions]
-            next_target_q_value, _ = Q_next_all.max(dim=1, keepdim=True)  # [B, 1]
-            next_target_q_value[terminals] = 0.0
+            if self.hp.use_ddqn:
+                # --- Double DQN (DDQN) ---
+                # Online Net selects action, Target Net evaluates it
+                next_actions = self.onlineDQN(next_states).argmax(dim=1, keepdim=True)
+                Q_next = self.targetDQN(next_states).gather(1, next_actions)
+            else:
+                # --- Standard DQN ---
+                # Target Net does BOTH selection and evaluation
+                Q_next_all = self.targetDQN(next_states)
+                Q_next, _ = Q_next_all.max(dim=1, keepdim=True)
 
-            y = rewards + self.hp.gamma * next_target_q_value           # [B, 1]
+            # Bellman Equation
+            Q_next[terminals] = 0.0
+            y = rewards + self.hp.gamma * Q_next
 
         # MSE loss
         loss = self.loss_function(Q_hat, y)
