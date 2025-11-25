@@ -18,7 +18,7 @@ try:
     from data_processor import DatasetPrep
     from transitions import _item_matrix
     # from agent.dqn_agent import DQN
-    from agent.dqn_model import DQN
+    from agent.dqn_model import DQN, DuelingDQN
     from utils.collaborative import collaborative_filtering_recommend
     from utils.hyperparameters import Hyperparameters
 except ImportError:
@@ -26,7 +26,7 @@ except ImportError:
     from .data_processor import DatasetPrep
     from .transitions import _item_matrix
     # from .agent.dqn_agent import DQN
-    from .agent.dqn_model import DQN
+    from .agent.dqn_model import DQN, DuelingDQN
     from .utils.collaborative import collaborative_filtering_recommend
     from .utils.hyperparameters import Hyperparameters
 
@@ -268,7 +268,11 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     
     # Load Model
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
-    dqn = DQN(num_actions=data['n_actions'], feature_size=data['feat_dim']).to(device)
+
+    if getattr(hp, "use_dueling", False): Net = DuelingDQN
+    else: Net = DQN
+
+    dqn = Net(num_actions=data['n_actions'], feature_size=data['feat_dim']).to(device)
 
     
     if model_path.exists():

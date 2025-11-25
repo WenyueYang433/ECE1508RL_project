@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np       
 from utils.replay_buffer import ReplayBuffer
-from agent.dqn_model import DQN
+from agent.dqn_model import DQN, DuelingDQN
 
 
 class Agent:
@@ -33,13 +33,18 @@ class Agent:
 
         self.replay_buffer = ReplayBuffer(self.hp.buffer_size)
 
-
+        if getattr(self.hp, "use_dueling", False):
+            print("--- Using Dueling Network Architecture ---")
+            Net = DuelingDQN
+        else:
+            print("--- Using Standard Network Architecture ---")
+            Net = DQN
  
-        self.onlineDQN = DQN(num_actions=self.num_actions,  
+        self.onlineDQN = Net(num_actions=self.num_actions,  
                              feature_size=feature_size,
                              hidden_dim=self.hp.hidden_dim, 
                              dropout_rate=self.hp.dropout_rate).to(self.device)
-        self.targetDQN = DQN(num_actions=self.num_actions, 
+        self.targetDQN =  Net(num_actions=self.num_actions, 
                              feature_size=feature_size,
                              hidden_dim=self.hp.hidden_dim,  
                              dropout_rate=self.hp.dropout_rate).to(self.device)
