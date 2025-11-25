@@ -17,7 +17,8 @@ import torch
 from data_loader import MovieLensLoader
 from data_processor import DatasetPrep
 from transitions import _item_matrix
-from agent.dqn_agent import DQN
+# from agent.dqn_agent import DQN
+from agent.dqn_model  import DQN
 from utils.collaborative import collaborative_filtering_recommend
 from evaluation import build_user_state_vectors, eval_prcp, make_cf_recommender
 
