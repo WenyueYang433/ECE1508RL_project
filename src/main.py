@@ -18,6 +18,12 @@ def main():
     model_save_path = PROJECT_ROOT / hp.model_base
     plot_save_path = PROJECT_ROOT / hp.plot_summary
     
+    if hp.use_ddqn:
+        print("---- Using DDQN------")
+    else:
+        print("---- Using Standard DQN")
+        
+    
     env = RecoEnv(
         data_dir=str(data_dir), 
         val_ratio=hp.val_ratio, 

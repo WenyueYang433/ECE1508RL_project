@@ -13,14 +13,22 @@ class Hyperparameters:
         self.model_finetuned = "models/dqn_movielens_finetuned.pt"
         self.plot_summary = "reports/figures/training_summary.png"
         
+        # --- ALGORITHM FLAGS ---
+        self.use_ddqn = True  # Set False: standard DQN, True: Double DQN
+        
+        # --- NN ARCHITECTURE ---
+        self.hidden_dim = 128     # width first layer 
+        self.dropout_rate = 0.2 
+        
         # --- PHASE 1: BASE TRAINING ---
         self.buffer_size = 100_000
         self.batch_size = 512
-        self.learning_rate = 1e-3      
-        self.gamma = 0.1 
-        self.target_update = 500
+        self.learning_rate = 1e-4      
+        self.gamma = 0.5 
+        self.target_update = 2000
         self.base_n_updates = 5000
         self.log_interval = 500
+        self.weight_decay = 1e-5
         
         # --- PHASE 2: FINE-TUNING (Hinge Loss) ---
         self.ft_n_steps = 2000

@@ -269,15 +269,17 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     # Load Model
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
     dqn = DQN(num_actions=data['n_actions'], feature_size=data['feat_dim']).to(device)
+
     
     if model_path.exists():
         print(f"Loading model from {model_path}")
         dqn.load_state_dict(torch.load(model_path, map_location=device))
+        print(dqn)
     else:
         print(f"WARNING: Model path {model_path} does not exist! Using random weights.")
 
-    # Evaluate DQN
-    print("Evaluating DQN...")
+    # Evaluate 
+    print(f"Evaluating {'DDQN' if hp.use_ddqn else 'DQN'}...")
     dqn_rec = make_dqn_recommender(dqn, data['user_state'], data['seen_train'], data['movie_ids_by_key'], data['n_actions'], device)
     dqn_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], dqn_rec, data['movieid_to_features'], N=top_k)
     
