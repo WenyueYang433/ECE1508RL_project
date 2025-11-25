@@ -46,6 +46,7 @@ def build_cf_candidates(train_df_id, K=200):
     candidates = {}
     users = train_df_id["userId"].unique()
     for u in users:
+    
         try:
             recs = collaborative_filtering_recommend(train_df_id, user_id=int(u), n_recs=K)
         except Exception:

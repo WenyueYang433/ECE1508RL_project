@@ -5,6 +5,7 @@ import torch.optim as optim
 import numpy as np       
 from utils.replay_buffer import ReplayBuffer
 
+
 class DQN(nn.Module):
     def __init__(self, num_actions, feature_size):
         super(DQN, self).__init__()
@@ -37,7 +38,7 @@ class Agent:
         self.hp = hyperparameters
 
         # epsilon 
-        self.epsilon = 0.99
+        self.epsilon = 0.0 # Default to Greedy (Offline RL)
         self.loss_list = []
         self.current_loss = 0.0
         self.episode_counts = 0
@@ -82,36 +83,59 @@ class Agent:
         print(f"[Agent] Preloaded {len(self.replay_buffer)} transitions into replay buffer.")
     
      
-    def update_epsilon(self):
-        # reduce epsilon by the decay factor
-        self.epsilon = max(0.01, self.epsilon * self.hp.epsilon_decay)
-
-
     #offline
-    def train(self, n_updates):
-        losses_all = []
-
-        self.current_loss = 0.0
-        self.episode_counts = 0
-
-        log_interval = getattr(self.hp, "log_interval", 1000)
+    def train(self, n_updates, val_data=None, save_path=None):
+        """
+        Runs the full training loop with periodic evaluation.
+        Returns dictionary of history stats for plotting.
+        """
+        from evaluation import eval_prcp, make_dqn_recommender
+        
+        print(f"Starting training for {n_updates} steps...")
+        history = {"loss": [], "ndcg": [], "q_val": [], "steps": []}
+        best_ndcg = 0.0
 
         for step in range(1, n_updates + 1):
             if len(self.replay_buffer) < self.hp.batch_size:
                 continue
-
+            
             self.apply_SGD(ended=(step % self.hp.target_update == 0))
             
-            self.update_epsilon()
+            avg_loss = self.current_loss / self.episode_counts if self.episode_counts > 0 else 0
+            history["loss"].append(avg_loss)
 
-            avg_loss = (self.current_loss / self.episode_counts
-                        if self.episode_counts > 0 else 0.0)
-            losses_all.append(avg_loss)
+            if val_data and step % 200 == 0:
+                
+                #NDCG
+                rec_func = make_dqn_recommender(
+                    self.onlineDQN, val_data['user_state'], val_data['seen_train'], 
+                    val_data['movie_ids_by_key'], val_data['n_actions'], self.device
+                )
+                metrics = eval_prcp(
+                    val_data['test_df_id'], val_data['test_df_id'], 
+                    val_data['n_actions'], rec_func, val_data['movieid_to_features'], N=10
+                )
+                ndcg = metrics['NDCG@10']
+                
+                # Q-Value Sanity Check
+                dummy_keys = list(val_data['user_state'].keys())[:32]
+                dummy_states = np.array([val_data['user_state'][k] for k in dummy_keys])
+                t_states = torch.tensor(dummy_states, dtype=torch.float32, device=self.device)
+                with torch.no_grad():
+                    avg_q = self.onlineDQN(t_states).mean().item()
 
-            if step % log_interval == 0 or step == 1:
-                print(f"Update {step:6d}/{n_updates} | Loss: {avg_loss:.4f}")
+                history["ndcg"].append(ndcg)
+                history["q_val"].append(avg_q)
+                history["steps"].append(step)
+                
+                print(f"Step {step:4d} | Loss: {avg_loss:.4f} | NDCG@10: {ndcg:.4f} | Avg Q: {avg_q:.3f}")
 
-        return losses_all
+                # Save Best
+                if save_path and ndcg >= best_ndcg:
+                    best_ndcg = ndcg
+                    torch.save(self.onlineDQN.state_dict(), save_path)
+        
+        return history
 
     def select_action(self, state): #epsilon-greedy
         if np.random.rand() < self.epsilon:

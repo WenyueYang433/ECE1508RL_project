@@ -2,7 +2,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Any
 import sys
 import numpy as np
 import pandas as pd
@@ -19,34 +19,95 @@ try:
     from transitions import _item_matrix
     from agent.dqn_agent import DQN
     from utils.collaborative import collaborative_filtering_recommend
-except ImportError:  # pragma: no cover - fallback when executed as package
+    from utils.hyperparameters import Hyperparameters
+except ImportError:
     from .data_loader import MovieLensLoader
     from .data_processor import DatasetPrep
     from .transitions import _item_matrix
     from .agent.dqn_agent import DQN
     from .utils.collaborative import collaborative_filtering_recommend
+    from .utils.hyperparameters import Hyperparameters
 
+def prepare_evaluation_data(
+    data_dir: Path, 
+    val_ratio: float, 
+    keep_top_n: int, 
+    min_ratings: int
+) -> Dict[str, Any]:
+    """
+    Loads data using settings from Hyperparameters.
+    """
+    print(f"--- Loading Data (Top {keep_top_n} movies, Min {min_ratings} ratings) ---")
+    loader = MovieLensLoader(str(data_dir)).load_all()
+    prep = DatasetPrep(loader)
+    
+    # Filter Movies & Users
+    movie_features = prep.encode_movies(keep_top_n=keep_top_n)
+    prep.encode_users(min_ratings=min_ratings) # cold start fix
+    ratings = prep.encode_ratings()
+    
+    # Train/Test Split
+    train_df, test_df = prep.temporal_split(ratings, val_ratio=val_ratio)
+    
+    # Build ID Mappings (Internal ID -> External MovieID)
+    mf_sorted = movie_features.sort_values("movie_key")
+    movie_ids_by_key = mf_sorted["movieId"].to_numpy()
+    key_to_movieid = dict(zip(mf_sorted["movie_key"].to_numpy(), mf_sorted["movieId"].to_numpy()))
+    
+    # DF with external IDs (for evaluation functions)
+    train_df_id = train_df.copy()
+    train_df_id["userId"] = train_df_id["user_key"]
+    train_df_id["movieId"] = train_df_id["movie_key"].map(key_to_movieid)
+    
+    test_df_id = test_df.copy()
+    test_df_id["userId"] = test_df_id["user_key"]
+    test_df_id["movieId"] = test_df_id["movie_key"].map(key_to_movieid)
+    
+    # Build User State & History (Seen)
+    item_matrix, _ = _item_matrix(movie_features)
+    user_state = build_user_state_vectors(train_df, item_matrix)
+    
+    seen_train = defaultdict(set)
+    for _, row in train_df.iterrows():
+        seen_train[int(row["user_key"])].add(int(row["movie_key"]))
+        
+    # Item Features Map (for Diversity metrics)
+    movieid_to_features = {}
+    for _, row in mf_sorted.iterrows():
+        k = int(row["movie_key"])
+        if 0 <= k < item_matrix.shape[0]:
+            movieid_to_features[int(row["movieId"])] = item_matrix[k]
+
+    return {
+        "train_df": train_df,
+        "test_df": test_df,
+        "train_df_id": train_df_id, 
+        "test_df_id": test_df_id,   
+        "user_state": user_state,
+        "seen_train": seen_train,
+        "movie_ids_by_key": movie_ids_by_key,
+        "item_matrix": item_matrix,
+        "movieid_to_features": movieid_to_features,
+        "n_actions": item_matrix.shape[0],
+        "feat_dim": item_matrix.shape[1]
+    }
+    
 def _dcg(relevances: List[int]) -> float:
-    if not relevances:
+    if not relevances: 
         return 0.0
     gains = np.array(relevances, dtype=np.float32)
     discounts = 1.0 / np.log2(np.arange(2, len(gains) + 2))
     return float(np.sum(gains * discounts))
 
-
 def _ndcg(hits: List[int], ideal_hits: int) -> float:
-    if ideal_hits == 0:
+    if ideal_hits == 0: 
         return 0.0
     dcg_val = _dcg(hits)
-    ideal_list = [1] * ideal_hits
-    ideal_dcg = _dcg(ideal_list)
-    if ideal_dcg == 0:
-        return 0.0
-    return dcg_val / ideal_dcg
-
+    ideal_dcg = _dcg([1] * ideal_hits)
+    return dcg_val / ideal_dcg if ideal_dcg > 0 else 0.0
 
 def _average_precision(hits: List[int], max_rel: int) -> float:
-    if max_rel == 0:
+    if max_rel == 0: 
         return 0.0
     cum_hits = 0
     ap = 0.0
@@ -54,10 +115,8 @@ def _average_precision(hits: List[int], max_rel: int) -> float:
         if rel:
             cum_hits += 1
             ap += cum_hits / idx
-    return ap / max_rel if max_rel > 0 else 0.0
+    return ap / max_rel
 
-
-#Calculates the performance metrics by comparing the agent's recommendations against the movies the user actually watched in the test set
 def eval_prcp(
     train_df_id: pd.DataFrame,
     test_df_id: pd.DataFrame,
@@ -71,325 +130,189 @@ def eval_prcp(
     max_pop = max(pop_dict.values()) if pop_dict else 1.0
 
     users = test_df_id["userId"].unique()
-
-    per_user_precision: List[float] = []
-    per_user_recall: List[float] = []
-    per_user_ndcg: List[float] = []
-    per_user_map: List[float] = []
-    per_user_coverage_ratio: List[float] = []
-
+    
+    metrics = defaultdict(list)
     all_rec_items = []
-    total_rec_items = 0
     pop_sum = 0.0
     novelty_sum = 0.0
     hit_users = 0
 
     for u in users:
         test_items = set(test_df_id.loc[test_df_id["userId"] == u, "movieId"])
-        if not test_items:
+        if not test_items: 
             continue
 
         rec_items = recommend_func(u, N)
-        if not rec_items:
+        if not rec_items: 
             continue
-
         rec_items = list(dict.fromkeys(rec_items))
-        if not rec_items:
-            continue
 
         hits = [1 if item in test_items else 0 for item in rec_items]
         rel_hits = sum(hits)
-        if rel_hits > 0:
-            hit_users += 1
+        if rel_hits > 0: hit_users += 1
 
-        precision_u = rel_hits / len(rec_items)
-        recall_u = rel_hits / len(test_items) if test_items else 0.0
-        ideal_hits = min(len(test_items), len(rec_items))
-        ndcg_u = _ndcg(hits, ideal_hits)
-        ap_u = _average_precision(hits, min(len(test_items), len(rec_items), N))
-
-        per_user_precision.append(precision_u)
-        per_user_recall.append(recall_u)
-        per_user_ndcg.append(ndcg_u)
-        per_user_map.append(ap_u)
-
-        coverage_ratio = len(set(rec_items)) / float(n_items_total)
-        per_user_coverage_ratio.append(coverage_ratio)
+        metrics['precision'].append(rel_hits / len(rec_items))
+        metrics['recall'].append(rel_hits / len(test_items))
+        metrics['ndcg'].append(_ndcg(hits, min(len(test_items), len(rec_items))))
+        metrics['map'].append(_average_precision(hits, min(len(test_items), len(rec_items), N)))
+        metrics['coverage_user'].append(len(set(rec_items)) / float(n_items_total))
 
         all_rec_items.extend(rec_items)
-        total_rec_items += len(rec_items)
-
+        
         for i in rec_items:
             pop_val = pop_dict.get(int(i), 0.0)
             pop_sum += np.log1p(pop_val)
             novelty_sum += -np.log(((pop_val or 0.0) + 1e-9) / (max_pop + 1e-9))
 
-    if total_rec_items == 0:
-        return {
-            f"Precision@{N}": 0.0,
-            f"Recall@{N}": 0.0,
-            f"NDCG@{N}": 0.0,
-            f"MAP@{N}": 0.0,
-            "HitRate": 0.0,
-            "Coverage@Catalog": 0.0,
-            "Coverage@User": 0.0,
-            "Popularity": 0.0,
-            "Novelty": 0.0,
-        }
-
-    unique_recs = len(set(all_rec_items))
-    coverage_catalog = unique_recs / float(n_items_total)
+    total_recs = len(all_rec_items)
+    if total_recs == 0:
+        return {"NDCG@10": 0.0, "Precision@10": 0.0, "Coverage@Catalog": 0.0}
 
     results = {
-        f"Precision@{N}": float(np.mean(per_user_precision)) if per_user_precision else 0.0,
-        f"Recall@{N}": float(np.mean(per_user_recall)) if per_user_recall else 0.0,
-        f"NDCG@{N}": float(np.mean(per_user_ndcg)) if per_user_ndcg else 0.0,
-        f"MAP@{N}": float(np.mean(per_user_map)) if per_user_map else 0.0,
-        "HitRate": hit_users / len(per_user_precision) if per_user_precision else 0.0,
-        "Coverage@Catalog": coverage_catalog,
-        "Coverage@User": float(np.mean(per_user_coverage_ratio)) if per_user_coverage_ratio else 0.0,
-        "Popularity": pop_sum / total_rec_items,
-        "Novelty": novelty_sum / total_rec_items,
+        f"Precision@{N}": np.mean(metrics['precision']),
+        f"Recall@{N}": np.mean(metrics['recall']),
+        f"NDCG@{N}": np.mean(metrics['ndcg']),
+        f"MAP@{N}": np.mean(metrics['map']),
+        "HitRate": hit_users / len(metrics['precision']) if metrics['precision'] else 0.0,
+        "Coverage@Catalog": len(set(all_rec_items)) / float(n_items_total),
+        "Coverage@User": np.mean(metrics['coverage_user']),
+        "Popularity": pop_sum / total_recs,
+        "Novelty": novelty_sum / total_recs,
     }
-
     return results
 
-#Creates state for every user: calculate the average feature vector of all the movies they watched in the training data
 def build_user_state_vectors(train_df, item_matrix: np.ndarray) -> dict[int, np.ndarray]:
     user_movies = defaultdict(list)
     for _, row in train_df.iterrows():
-        u = int(row["user_key"])
-        m = int(row["movie_key"])
-        user_movies[u].append(m)
+        user_movies[int(row["user_key"])].append(int(row["movie_key"]))
 
     user_state = {}
     for u, movies in user_movies.items():
-        if not movies:
-            continue
-        vec = item_matrix[movies].mean(axis=0)
-        user_state[u] = vec.astype(np.float32)
+        if movies:
+            user_state[u] = item_matrix[movies].mean(axis=0).astype(np.float32)
     return user_state
 
-
-def make_dqn_recommender( dqn_model: DQN, user_state: dict[int, np.ndarray], seen_train: dict[int, set[int]],movie_ids_by_key: np.ndarray,n_actions: int,device: torch.device):
+def make_dqn_recommender(dqn_model: DQN, user_state, seen_train, movie_ids_by_key, n_actions, device):
     dqn_model.eval()
-    
-    #pass state into DQN, mask out movies they have already seen, and selects the top N movies with the highest Q-values
     def recommend(user_id: int, N: int):
         u = user_id
-        if u not in user_state:
-            return []
-
+        if u not in user_state: return []
         state_vec = user_state[u]
-        state_t = torch.tensor(state_vec, dtype=torch.float32,
-                               device=device).unsqueeze(0)
+        state_t = torch.tensor(state_vec, dtype=torch.float32, device=device).unsqueeze(0)
         with torch.no_grad():
-            q = dqn_model(state_t).cpu().numpy().reshape(-1)  # [n_actions]
+            q = dqn_model(state_t).cpu().numpy().reshape(-1)
         mask = np.ones_like(q, dtype=bool)
         seen = seen_train.get(u, set())
         if seen:
-            idx = np.fromiter(seen, dtype=int)
-            mask[idx] = False
-
+            mask[list(seen)] = False # Mask watched
         cand_idx = np.where(mask)[0]
-        if len(cand_idx) == 0:
-            return []
-
+        if len(cand_idx) == 0: return []
         top_rel = np.argsort(-q[cand_idx])[:N]
-        movie_keys = cand_idx[top_rel]
-        movie_ids = movie_ids_by_key[movie_keys]
-        return list(movie_ids)
-
+        return list(movie_ids_by_key[cand_idx[top_rel]])
     return recommend
 
 def make_cf_recommender(train_df_id: pd.DataFrame):
-   
     def recommend(user_id: int, N: int):
         try:
-            rec_df = collaborative_filtering_recommend(
-                train_df_id, user_id=user_id, n_recs=N
-            )
+            rec_df = collaborative_filtering_recommend(train_df_id, user_id=user_id, n_recs=N)
+            return list(rec_df["movieId"].values) if (rec_df is not None and not rec_df.empty) else []
         except ValueError:
             return []
-
-        if rec_df is None or rec_df.empty:
-            return []
-        return list(rec_df["movieId"].values)
-
     return recommend
 
-
+# --- PLOTTING ---
 def _print_metrics_block(title: str, metrics: dict[str, float | dict], indent: int = 0) -> None:
     prefix = " " * indent
     print(f"{prefix}{title}:")
     for key, value in metrics.items():
-        if isinstance(value, dict):
-            _print_metrics_block(key, value, indent + 2)
-        else:
-            print(f"{' ' * (indent + 2)}{key}: {value:.4f}")
+        print(f"{' ' * (indent + 2)}{key}: {value:.4f}")
 
-
-def _plot_metric_bars(metric_names, dqn_metrics, cf_metrics, out_path: Path, title: str, ylabel: str = "") -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+def _visualize_metrics(project_root, dqn_metrics, cf_metrics, top_k):
+    figures_dir = project_root / "reports" / "figures"
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    
+    metric_names = [f"Precision@{top_k}", f"Recall@{top_k}", f"NDCG@{top_k}", f"MAP@{top_k}"]
     dqn_vals = [float(dqn_metrics.get(name, 0.0)) for name in metric_names]
     cf_vals = [float(cf_metrics.get(name, 0.0)) for name in metric_names]
-
+    
     x = np.arange(len(metric_names))
     width = 0.35
-
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(x - width / 2, dqn_vals, width, label="DQN", color="#4C72B0")
-    ax.bar(x + width / 2, cf_vals, width, label="CF", color="#55A868")
+    ax.bar(x - width/2, dqn_vals, width, label="DQN", color="#4C72B0")
+    ax.bar(x + width/2, cf_vals, width, label="CF", color="#55A868")
     ax.set_xticks(x)
     ax.set_xticklabels(metric_names, rotation=20, ha="right")
-    ax.set_ylabel(ylabel or "Score")
-    ax.set_title(title)
+    ax.set_title(f"Top-{top_k} Ranking Metrics")
     ax.legend()
-    ax.grid(axis="y", alpha=0.2, linestyle="--", linewidth=0.7)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=200)
+    fig.savefig(figures_dir / f"topk_metrics_k{top_k}.png", dpi=200)
     plt.close(fig)
 
+def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool = False, top_k: int = 10):
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    
+    # Resolve Paths
+    data_dir = PROJECT_ROOT / hp.data_rel_path
+    if model_path is None:
+        model_path = PROJECT_ROOT / hp.model_base # Default to Base model
 
-def _visualize_metrics(
-    project_root: Path,
-    dqn_metrics: dict[str, float],
-    cf_metrics: dict[str, float],
-    top_k: int,
-) -> None:
-    figures_dir = project_root / "reports" / "figures"
-
-    ranking_metrics = [f"Precision@{top_k}", f"Recall@{top_k}", f"NDCG@{top_k}", f"MAP@{top_k}"]
-    _plot_metric_bars(
-        ranking_metrics,
-        dqn_metrics,
-        cf_metrics,
-        figures_dir / f"topk_metrics_k{top_k}.png",
-        title=f"Top-{top_k} Ranking Metrics",
+    # Prepare Data
+    data = prepare_evaluation_data(
+        data_dir, 
+        val_ratio=hp.val_ratio, 
+        keep_top_n=hp.keep_top_n, 
+        min_ratings=hp.min_ratings
     )
+    
+    # Load Model
+    device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
+    dqn = DQN(num_actions=data['n_actions'], feature_size=data['feat_dim']).to(device)
+    
+    if model_path.exists():
+        print(f"Loading model from {model_path}")
+        dqn.load_state_dict(torch.load(model_path, map_location=device))
+    else:
+        print(f"WARNING: Model path {model_path} does not exist! Using random weights.")
 
-    catalog_metrics = ["HitRate", "Coverage@Catalog", "Coverage@User", "Novelty", "Popularity"]
-    _plot_metric_bars(
-        catalog_metrics,
-        dqn_metrics,
-        cf_metrics,
-        figures_dir / f"catalog_metrics_k{top_k}.png",
-        title="Catalog & Diversity Metrics",
-        ylabel="Score / Ratio",
-    )
-
-
-def run_evaluation(
-    model_path: Path | None = None,
-    data_dir: Path | None = None,
-    val_ratio: float = 0.1,
-    top_k: int = 10,
-) -> tuple[dict[str, float], dict[str, float]]:
-    project_root = Path(__file__).resolve().parents[1]
-    data_dir = data_dir or (project_root / "data" / "ml-latest-small")
-    model_path = model_path or (project_root / "models" / "dqn_movielens.pt")
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    loader = MovieLensLoader(str(data_dir)).load_all()
-    prep = DatasetPrep(loader)
-    movie_features = prep.encode_movies()
-    ratings = prep.encode_ratings()
-    train_df, test_df = prep.temporal_split(ratings, val_ratio=val_ratio)
-
-    mf_sorted = movie_features.sort_values("movie_key")
-    movie_ids_by_key = mf_sorted["movieId"].to_numpy()
-    n_items_total = len(mf_sorted["movieId"].unique())
-    item_matrix, _ = _item_matrix(movie_features)
-
-    movieid_to_features: Dict[int, np.ndarray] = {}
-    for _, row in mf_sorted.iterrows():
-        movie_id = int(row["movieId"])
-        movie_key = int(row["movie_key"])
-        if 0 <= movie_key < item_matrix.shape[0]:
-            movieid_to_features[movie_id] = item_matrix[movie_key]
-
-    train_df_id = train_df.copy()
-    test_df_id = test_df.copy()
-    train_df_id["userId"] = train_df_id["user_key"]
-    test_df_id["userId"] = test_df_id["user_key"]
-    train_df_id["movieId"] = movie_ids_by_key[train_df_id["movie_key"].to_numpy()]
-    test_df_id["movieId"] = movie_ids_by_key[test_df_id["movie_key"].to_numpy()]
-
-    user_state = build_user_state_vectors(train_df, item_matrix)
-    seen_train = defaultdict(set)
-    for _, row in train_df.iterrows():
-        seen_train[int(row["user_key"])].add(int(row["movie_key"]))
-
-    n_actions = item_matrix.shape[0]
-    feat_dim = item_matrix.shape[1]
-
-    dqn = DQN(num_actions=n_actions, feature_size=feat_dim).to(device)
-    state = torch.load(model_path, map_location=device)
-    dqn.load_state_dict(state)
-
-    dqn_recommender = make_dqn_recommender(
-        dqn_model=dqn,
-        user_state=user_state,
-        seen_train=seen_train,
-        movie_ids_by_key=movie_ids_by_key,
-        n_actions=n_actions,
-        device=device,
-    )
-    cf_recommender = make_cf_recommender(train_df_id)
-
-    dqn_metrics = eval_prcp(
-        train_df_id=train_df_id,
-        test_df_id=test_df_id,
-        n_items_total=n_items_total,
-        recommend_func=dqn_recommender,
-        item_features=movieid_to_features,
-        N=top_k,
-    )
-
-    cf_metrics = eval_prcp(
-        train_df_id=train_df_id,
-        test_df_id=test_df_id,
-        n_items_total=n_items_total,
-        recommend_func=cf_recommender,
-        item_features=movieid_to_features,
-        N=top_k,
-    )
+    # Evaluate DQN
+    print("Evaluating DQN...")
+    dqn_rec = make_dqn_recommender(dqn, data['user_state'], data['seen_train'], data['movie_ids_by_key'], data['n_actions'], device)
+    dqn_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], dqn_rec, data['movieid_to_features'], N=top_k)
+    
+    # Evaluate CF (Baseline)
+    print("Evaluating CF...")
+    cf_rec = make_cf_recommender(data['train_df_id'])
+    cf_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], cf_rec, data['movieid_to_features'], N=top_k)
+    
+    print(f"\n=== Top-{top_k} Results ===")
+    _print_metrics_block("DQN", dqn_metrics)
+    print("")
+    _print_metrics_block("CF (Baseline)", cf_metrics)
+    
+    if not no_plots:
+        _visualize_metrics(PROJECT_ROOT, dqn_metrics, cf_metrics, top_k)
+        print("\nPlots saved to reports/figures/")
 
     return dqn_metrics, cf_metrics
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Offline evaluation for MovieLens DQN.")
-    parser.add_argument("--model-path", type=Path, default=None, help="Checkpoint to evaluate.")
-    parser.add_argument("--data-dir", type=Path, default=None, help="MovieLens data directory.")
-    parser.add_argument("--val-ratio", type=float, default=0.1, help="Validation split ratio.")
-    parser.add_argument("--top-k", type=int, default=10, help="Top-K cutoff for ranking metrics.")
-    parser.add_argument(
-        "--no-plots",
-        action="store_true",
-        help="Disable saving matplotlib comparison plots.",
-    )
-    args = parser.parse_args()
-
-    dqn_metrics, cf_metrics = run_evaluation(
-        model_path=args.model_path,
-        data_dir=args.data_dir,
-        val_ratio=args.val_ratio,
-        top_k=args.top_k,
-    )
-
-    print(
-        f"\n=== Top-{args.top_k} Evaluation (Precision / Recall / Coverage / Popularity / Advanced Metrics) ==="
-    )
-    _print_metrics_block("DQN", dqn_metrics)
-    print()
-    _print_metrics_block("CF (User-based collaborative)", cf_metrics)
-
-    if not args.no_plots:
-        project_root = Path(__file__).resolve().parents[1]
-        _visualize_metrics(project_root, dqn_metrics, cf_metrics, args.top_k)
-        print("\nSaved metric comparison plots to reports/figures/.")
-
-
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser(description="Offline evaluation using Hyperparameters.")
+    parser.add_argument("--model-type", type=str, choices=["base", "finetuned", "custom"], default="base", help="Which config path to use.")
+    parser.add_argument("--custom-path", type=str, help="Path if model-type is custom.")
+    parser.add_argument("--no-plots", default=False,action="store_true", help="Disable plots.")
+    
+    args = parser.parse_args()
+    
+    hp = Hyperparameters()
+    
+    # Get Model Path
+    root = Path(__file__).resolve().parents[1]
+    if args.model_type == "finetuned":
+        path = root / hp.model_finetuned
+    elif args.model_type == "base":
+        path = root / hp.model_base
+    else:
+        path = Path(args.custom_path)
+        
+    run_evaluation(hp, path, args.no_plots)

@@ -75,7 +75,15 @@ class DatasetPrep:
         )
         return pd.concat([base, genres], axis=1)
 
-    def encode_users(self) -> pd.DataFrame:
+    def encode_users(self,min_ratings: int = 5) -> pd.DataFrame:
+        
+        # for cold start issue: filter out users with num of ratings < min_ratings
+        user_counts = self.ratings["userId"].value_counts()
+        valid_users = user_counts[user_counts >= min_ratings].index
+        before_count = len(self.ratings)
+        self.ratings = self.ratings[self.ratings["userId"].isin(valid_users)].copy()
+        print(f"Filtered users with < {min_ratings} ratings. Ratings dropped: {before_count - len(self.ratings)}")
+        
         users = sorted(self.ratings["userId"].unique())
         self._user_ids = users
         return pd.DataFrame(
