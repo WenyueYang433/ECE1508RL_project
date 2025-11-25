@@ -9,21 +9,25 @@ ECE1508RL_project/
 ├── data/
 │   └── ml-latest-small/        # Raw CSVs from MovieLens (ratings, movies, tags, links)
 ├── models/                     # Trained DQN weights, logs, and optional plots
+├── reports/                    # Generated plots and evaluation figures
 ├── src/
-│   ├── __init__.py             
+│   ├── __init__.py   
+│   ├── candidate_re_rank.py    # Logic for re-ranking candidates          
 │   ├── data_loader.py          # Basic CSV loader/validator
 │   ├── data_processor.py       # Turns raw tables into feature matrices
 │   ├── data_stats.py           # Quick stats + plots
-│   ├──  transitions.py          # Builds offline DQN transitions
-│   ├──  evaluation.py          #  Model evaluation
-│   └── main.py                #  Train the DQN and save it 
+│   ├── transitions.py          # Builds offline DQN transitions
+│   ├── fine_tune_candidate.py  # Script for fine-tuning the model with hard negatives
+│   ├── evaluation.py           #  Model evaluation
+│   ├── main.py                 #  Train the DQN and save it 
 │   ├── env/
-│   │   └── reco_env.py         # Offline MovieLens environment and transition construction
+│   │   └── recommender_env.py  # Offline MovieLens environment
 │   ├── agent/
-│   │   └── dqn_agent.py        # DQN network and offline training agent using ReplayBuffer
+│   │   ├── dqn_agent.py        # RL Agent logic (training loop, action selection)
+│   │   └── dqn_model.py        # DQN NN
 │   └── utils/
 │       ├── collaborative.py    # User-based collaborative filtering (UserCF) baseline
-│       ├── hyperparameters.py    # Hyperparameters
+│       ├── hyperparameters.py  # Hyperparameters
 │       └── replay_buffer.py    # Simple experience replay buffer for DQN training
 └── README.md
 
