@@ -24,6 +24,7 @@ ECE1508RL_project/
 │   │   └── recommender_env.py  # Offline MovieLens environment
 │   ├── agent/
 │   │   ├── dqn_agent.py        # RL Agent logic (training loop, action selection)
+│   │   ├── ddqn_dueling_model.py # ddqn_dueling NN
 │   │   └── dqn_model.py        # DQN NN
 │   └── utils/
 │       ├── collaborative.py    # User-based collaborative filtering (UserCF) baseline
