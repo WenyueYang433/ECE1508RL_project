@@ -14,6 +14,8 @@ class RecoEnv:
 
         # Encoded film features & Scoring table
         movie_features = prep.encode_movies(keep_top_n=keep_top_n)
+        #Cold Start: removing users with < 5 interactions
+        prep.encode_users(min_ratings=5)
         rating_table = prep.encode_ratings()
 
         # Time division train/val

@@ -74,9 +74,19 @@ def build_offline_transitions(
             rating_val = ratings[idx]
 
             already_seen = action_key in watched
-            reward = (rating_val / 5.0) - (repeat_penalty if already_seen else 0.0)
+            
+            
+            #reward = (rating_val / 5.0) - (repeat_penalty if already_seen else 0.0)
+            
+            #use negative rewards for 1&2 rating, force the agent to learn from negative feedback(i.e. recommend bad movie)
+            #1 star = -2.0 strong Punishment, 3 stars = 0.0 neutral, 5 Stars = +2 (Strong Reward)
+            base_reward = (rating_val - 3.0) / 2.0
+            
+            # penalty for recommend seen movies
+            r_penalty = repeat_penalty if already_seen else 0.0
+            reward = base_reward - r_penalty
 
-            # popularity_penalty: subtract a small amount proportional to item popularity
+            # popularity_penalty
             if popularity_penalty and 0 <= action_key < len(pop_norm):
                 reward = reward - float(popularity_penalty * pop_norm[int(action_key)])
 
@@ -97,6 +107,18 @@ def build_offline_transitions(
             transitions["reward"].append(float(reward))
             transitions["next_state"].append(next_state)
             transitions["done"].append(done)
+            
+            # Negative Sampling
+            # Use a fake "negative" experience to teach the agent that random movies are bad       
+            neg_action = np.random.randint(0, item_matrix.shape[0])  #  random movie ID that is NOT the current action
+            # give it a negative reward (-0.5 = a 2-star rating)
+            neg_reward = -0.5 
+            # state/next_state is the same (we assume user ignored this recommendation)
+            transitions["state"].append(state)
+            transitions["action"].append(int(neg_action))
+            transitions["reward"].append(float(neg_reward))
+            transitions["next_state"].append(state) # Next state doesn't change because they didn't watch it
+            transitions["done"].append(False)       # Negatives don't end the episode
 
     if not transitions["state"]:
         raise ValueError("No transitions built; check input data.")
