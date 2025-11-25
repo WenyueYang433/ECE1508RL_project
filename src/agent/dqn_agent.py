@@ -53,7 +53,8 @@ class Agent:
         
         print(self.onlineDQN)
 
-        self.loss_function = nn.MSELoss()
+        #self.loss_function = nn.MSELoss()
+        self.loss_function =nn.SmoothL1Loss()
         self.optimizer = optim.Adam(
             self.onlineDQN.parameters(), 
             lr=self.hp.learning_rate, 
