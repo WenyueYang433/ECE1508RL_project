@@ -15,7 +15,8 @@ class Hyperparameters:
         
         # --- ALGORITHM FLAGS ---
         self.use_ddqn = True  # Set False: standard DQN, True: Double DQN
-        
+        self.use_dueling = False  #  Set False: standard DQN OR  Double DQN depend on self.use_ddqn
+
         # --- NN ARCHITECTURE ---
         self.hidden_dim = 128     # width first layer 
         self.dropout_rate = 0.2 

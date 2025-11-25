@@ -17,6 +17,7 @@ import torch.optim as optim
 from evaluation import prepare_evaluation_data, eval_prcp, make_dqn_recommender
 from utils.collaborative import collaborative_filtering_recommend
 from agent.dqn_agent import DQN
+from agent.ddqn_dueling_model import DuelingDQN
 
 from utils.hyperparameters import Hyperparameters
 
@@ -97,7 +98,9 @@ def fine_tune():
     
     # SETUP MODEL
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
-    dqn = DQN(num_actions=n_actions, feature_size=feat_dim).to(device)
+    if getattr(hp, "use_dueling", False): Net = DuelingDQN
+    else: Net = DQN
+    dqn = Net(num_actions=n_actions, feature_size=feat_dim).to(device)
     
     if base_model_path.exists():
         state = torch.load(base_model_path, map_location=device)
