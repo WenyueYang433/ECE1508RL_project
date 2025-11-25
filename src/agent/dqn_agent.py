@@ -5,7 +5,7 @@ import torch.optim as optim
 import numpy as np       
 from utils.replay_buffer import ReplayBuffer
 from agent.dqn_model import DQN
-from agent.dqn_dueling_model import DuelingDQN
+from agent.ddqn_dueling_model import DuelingDQN
 
 class Agent:
     def __init__(self, env, hyperparameters, device=None):

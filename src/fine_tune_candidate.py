@@ -17,7 +17,7 @@ import torch.optim as optim
 from evaluation import prepare_evaluation_data, eval_prcp, make_dqn_recommender
 from utils.collaborative import collaborative_filtering_recommend
 from agent.dqn_agent import DQN
-from agent.dqn_dueling_model import DuelingDQN
+from agent.ddqn_dueling_model import DuelingDQN
 
 from utils.hyperparameters import Hyperparameters
 
