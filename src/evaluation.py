@@ -18,7 +18,8 @@ try:
     from data_processor import DatasetPrep
     from transitions import _item_matrix
     # from agent.dqn_agent import DQN
-    from agent.dqn_model import DQN, DuelingDQN
+    from agent.dqn_model import DQN
+    from agent.dqn_dueling_model import DuelingDQN
     from utils.collaborative import collaborative_filtering_recommend
     from utils.hyperparameters import Hyperparameters
 except ImportError:
@@ -26,7 +27,8 @@ except ImportError:
     from .data_processor import DatasetPrep
     from .transitions import _item_matrix
     # from .agent.dqn_agent import DQN
-    from .agent.dqn_model import DQN, DuelingDQN
+    from .agent.dqn_model import DQN
+    from .agent.dqn_dueling_model import DuelingDQN
     from .utils.collaborative import collaborative_filtering_recommend
     from .utils.hyperparameters import Hyperparameters
 
