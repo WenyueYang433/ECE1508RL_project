@@ -59,7 +59,8 @@ def fine_tune():
         data_dir, 
         val_ratio=hp.val_ratio,          
         keep_top_n=hp.keep_top_n, 
-        min_ratings=hp.min_ratings           
+        min_ratings=hp.min_ratings,
+        history_window=hp.history_window            
     )
     
     # Unpack for convenience
@@ -70,6 +71,8 @@ def fine_tune():
     movie_ids_by_key = data['movie_ids_by_key']
     n_actions = data['n_actions']
     feat_dim = data['feat_dim']
+    
+    state_dim = feat_dim * hp.history_window
     
     # Inverse map for CF candidate conversion (ID -> Key)
     movieid_to_key = {mid: k for k, mid in enumerate(movie_ids_by_key)}
@@ -100,7 +103,7 @@ def fine_tune():
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
     if getattr(hp, "use_dueling", False): Net = DuelingDQN
     else: Net = DQN
-    dqn = Net(num_actions=n_actions, feature_size=feat_dim).to(device)
+    dqn = Net(num_actions=n_actions, feature_size=state_dim).to(device)
     
     if base_model_path.exists():
         state = torch.load(base_model_path, map_location=device)
@@ -169,7 +172,7 @@ def fine_tune():
                 if n != pos and n not in seen_train.get(u, set()) and n not in negs:
                     negs.append(n)
 
-            states.append(user_state.get(u, np.zeros(feat_dim, dtype=np.float32)))
+            states.append(user_state.get(u, np.zeros(state_dim, dtype=np.float32)))
             pos_idx.append(pos)
             neg_idx.append(negs)
 

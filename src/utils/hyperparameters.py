@@ -15,7 +15,7 @@ class Hyperparameters:
         
         # --- ALGORITHM FLAGS ---
         self.use_ddqn = True  # Set False: standard DQN, True: Double DQN
-        self.use_dueling = False  #  Set False: standard DQN OR  Double DQN depend on self.use_ddqn
+        self.use_dueling = True  #  Set False: standard DQN OR  Double DQN depend on self.use_ddqn
         
         # --- SEQUENTIAL SETTINGS---
         self.history_window = 10  # In state, use last N movies
@@ -26,11 +26,11 @@ class Hyperparameters:
         
         # --- PHASE 1: BASE TRAINING ---
         self.buffer_size = 100_000
-        self.batch_size = 512
+        self.batch_size = 128
         self.learning_rate = 1e-4      
-        self.gamma = 0.5 
-        self.target_update = 2000
-        self.base_n_updates = 5000
+        self.gamma = 0.7 
+        self.target_update = 500
+        self.base_n_updates = 10000
         self.log_interval = 500
         self.weight_decay = 1e-5
         

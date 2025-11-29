@@ -19,7 +19,7 @@ def main():
     plot_save_path = PROJECT_ROOT / hp.plot_summary
     
     if hp.use_ddqn:
-        print("---- Using DDQN------")
+        print(f"---- Using {'Dueling' if hp.use_dueling else ''} DDQN------")
     else:
         print("---- Using Standard DQN")
         
