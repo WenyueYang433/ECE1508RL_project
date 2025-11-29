@@ -18,10 +18,16 @@ def main():
     model_save_path = PROJECT_ROOT / hp.model_base
     plot_save_path = PROJECT_ROOT / hp.plot_summary
     
-    if hp.use_ddqn:
-        print(f"---- Using {'Dueling' if hp.use_dueling else ''} DDQN------")
+    
+    if getattr(hp, "use_grudqn", False):
+        arch_type = "GRU"
+    elif getattr(hp, "use_dueling", False):
+        arch_type = "Dueling"
     else:
-        print("---- Using Standard DQN")
+        arch_type = "Standard"
+    algo_type = "DDQN" if hp.use_ddqn else "DQN"
+
+    print(f"---- Using {arch_type} {algo_type} ------")
         
     
     env = RecoEnv(
@@ -29,7 +35,7 @@ def main():
         val_ratio=hp.val_ratio, 
         keep_top_n=hp.keep_top_n, 
         repeat_penalty=0.1,      
-        popularity_penalty=0.01,
+        popularity_penalty=0.1,
         history_window = hp.history_window
     )
     

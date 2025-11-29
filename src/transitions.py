@@ -77,7 +77,9 @@ def build_offline_transitions(
             
             # preserves sequence
             # take the history, flatten into 1D vector, sequence:(t-windowSize,....,t-1 )
-            state = np.concatenate(history).astype(np.float32)
+            #For GRU:
+            # state = np.concatenate(history).astype(np.float32)
+            state = np.array(history, dtype=np.float32)
 
             action_key = movie_keys[idx]
             rating_val = ratings[idx]
@@ -103,7 +105,9 @@ def build_offline_transitions(
             # append movie just watched to the history, remove olest one
             history.append(movie_vec)
             
-            next_state = np.concatenate(history).astype(np.float32)
+            # next_state = np.concatenate(history).astype(np.float32)
+            # For GRU
+            next_state = np.array(history, dtype=np.float32)
             
             watched.add(action_key)
             done = idx == len(movie_keys) - 2
@@ -131,10 +135,10 @@ def build_offline_transitions(
         raise ValueError("No transitions built; check input data.")
 
     out = {
-        "state": np.vstack(transitions["state"]).astype(np.float32),
+        "state": np.array(transitions["state"], dtype=np.float32),
         "action": np.array(transitions["action"], dtype=np.int32),
         "reward": np.array(transitions["reward"], dtype=np.float32),
-        "next_state": np.vstack(transitions["next_state"]).astype(np.float32),
+        "next_state": np.array(transitions["next_state"], dtype=np.float32),
         "done": np.array(transitions["done"], dtype=np.bool_),
     }
     return out

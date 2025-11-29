@@ -42,6 +42,12 @@ class RecoEnv:
         #Old: self.state_dim: int = self.transitions_train["state"].shape[1]
         feat_dim = item_matrix.shape[1]
         self.state_dim = feat_dim * self.history_window
+        
+        #For GRU:
+        self.input_dim = feat_dim # Dimension of a single movie
+        self.state_shape = (self.history_window, feat_dim) # Shape of the stat
+        
+        
         self.n_actions: int = item_matrix.shape[0]
 
         print(

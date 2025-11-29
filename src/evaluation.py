@@ -17,18 +17,18 @@ try:
     from data_loader import MovieLensLoader
     from data_processor import DatasetPrep
     from transitions import _item_matrix
-    # from agent.dqn_agent import DQN
     from agent.dqn_model import DQN
     from agent.ddqn_dueling_model import DuelingDQN
+    from agent.gruDQN import GRU_DQN
     from utils.collaborative import collaborative_filtering_recommend
     from utils.hyperparameters import Hyperparameters
 except ImportError:
     from .data_loader import MovieLensLoader
     from .data_processor import DatasetPrep
     from .transitions import _item_matrix
-    # from .agent.dqn_agent import DQN
     from .agent.dqn_model import DQN
     from .agent.ddqn_dueling_model import DuelingDQN
+    from .agent.gruDQN import GRU_DQN
     from .utils.collaborative import collaborative_filtering_recommend
     from .utils.hyperparameters import Hyperparameters
 
@@ -213,8 +213,10 @@ def build_user_state_vectors(train_df, item_matrix: np.ndarray,history_window: i
         # add movie
         for key in history_keys:
             vector_stack.append(item_matrix[key])
-            
-        state_vec = np.concatenate(vector_stack).astype(np.float32)
+        
+        #For GRU:    
+        # state_vec = np.concatenate(vector_stack).astype(np.float32)
+        state_vec = np.array(vector_stack, dtype=np.float32)
         user_state[u] = state_vec
     return user_state
 
@@ -294,11 +296,31 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     # Load Model
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
 
+    # Determine Dimensions
+    single_movie_dim = data['feat_dim']
+    flattened_dim = data['feat_dim'] * hp.history_window
+    
+    if getattr(hp, "use_grudqn", False):
+        print("--- Evaluator: Using GRU Architecture ---")
+        Net = GRU_DQN
+        input_dim = single_movie_dim
+    elif getattr(hp, "use_dueling", False): 
+        Net = DuelingDQN
+        input_dim = flattened_dim
+    else: 
+        Net = DQN
+        input_dim = flattened_dim
+
     if getattr(hp, "use_dueling", False): Net = DuelingDQN
     else: Net = DQN
 
     state_input_dim = data['feat_dim'] * hp.history_window
-    dqn = Net(num_actions=data['n_actions'], feature_size=state_input_dim).to(device)
+    # dqn = Net(num_actions=data['n_actions'], feature_size=state_input_dim).to(device)
+    try:
+        dqn = Net(num_actions=data['n_actions'], input_dim=input_dim).to(device)
+    except TypeError:
+        # Fallback for previous version
+        dqn = Net(num_actions=data['n_actions'], feature_size=input_dim).to(device)
 
     
     if model_path.exists():

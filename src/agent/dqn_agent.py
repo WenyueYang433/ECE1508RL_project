@@ -6,6 +6,7 @@ import numpy as np
 from utils.replay_buffer import ReplayBuffer
 from agent.dqn_model import DQN
 from agent.ddqn_dueling_model import DuelingDQN
+from agent.gruDQN import GRU_DQN
 
 class Agent:
     def __init__(self, env, hyperparameters, device=None):
@@ -29,23 +30,45 @@ class Agent:
 
 
         self.num_actions = env.n_actions
-        feature_size = env.state_dim  
+        # feature_size = env.state_dim
+       
+        #For GRU:
+        # Determine Dimensions
+        '''
+        feature_dim is the size of one movie
+        state_dim is the size of the FLATTENED window (e.g. 20 * 10 = 200)
+        '''
+        if hasattr(env, 'item_matrix'):
+            single_movie_dim = env.item_matrix.shape[1]
+        else:
+            single_movie_dim = env.state_dim // env.history_window
 
+        flattened_dim = env.state_dim 
+        self.num_actions = env.n_actions
+          
         self.replay_buffer = ReplayBuffer(self.hp.buffer_size)
 
         if getattr(self.hp, "use_dueling", False):
-            print("--- Using Dueling Network Architecture ---")
+            print("--- Using Dueling DQN Network Architecture ---")
             Net = DuelingDQN
+            input_arg = flattened_dim
+        elif getattr(self.hp, "use_grudqn", False):
+            print("--- Using GRU DQN ---")
+            Net = GRU_DQN
+            input_arg = single_movie_dim
         else:
-            print("--- Using Standard Network Architecture ---")
+            print("--- Using Standard DQN Network Architecture ---")
             Net = DQN
+            input_arg = flattened_dim
  
         self.onlineDQN = Net(num_actions=self.num_actions,  
-                             feature_size=feature_size,
+                            #  feature_size=feature_size,
+                            input_dim=input_arg,
                              hidden_dim=self.hp.hidden_dim, 
                              dropout_rate=self.hp.dropout_rate).to(self.device)
         self.targetDQN =  Net(num_actions=self.num_actions, 
-                             feature_size=feature_size,
+                            #  feature_size=feature_size,
+                             input_dim=input_arg,
                              hidden_dim=self.hp.hidden_dim,  
                              dropout_rate=self.hp.dropout_rate).to(self.device)
         self.targetDQN.load_state_dict(self.onlineDQN.state_dict())
@@ -152,6 +175,9 @@ class Agent:
         return action
 
     def apply_SGD(self, ended: bool):
+        
+        self.onlineDQN.train()
+        
         states, actions, rewards, next_states, terminals = \
             self.replay_buffer.sample(self.hp.batch_size)
 
