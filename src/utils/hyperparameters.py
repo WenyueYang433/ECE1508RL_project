@@ -22,15 +22,15 @@ class Hyperparameters:
 
         # --- NN ARCHITECTURE ---
         self.hidden_dim = 256     # width first layer 
-        self.dropout_rate = 0.2 
+        self.dropout_rate = 0.1 
         
         # --- PHASE 1: BASE TRAINING ---
         self.buffer_size = 100_000
-        self.batch_size = 512
+        self.batch_size = 256
         self.learning_rate = 1e-4      
-        self.gamma = 0.5 
+        self.gamma = 0.7 
         self.target_update = 2000
-        self.base_n_updates = 5000
+        self.base_n_updates = 10000
         self.log_interval = 500
         self.weight_decay = 1e-5
         
