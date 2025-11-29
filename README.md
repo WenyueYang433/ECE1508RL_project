@@ -28,6 +28,7 @@ ECE1508RL_project/
 │   │   └── dqn_model.py        # DQN NN
 │   └── utils/
 │       ├── collaborative.py    # User-based collaborative filtering (UserCF) baseline
+│       ├── random_rec.py       # Random recommender baseline
 │       ├── hyperparameters.py  # Hyperparameters
 │       └── replay_buffer.py    # Simple experience replay buffer for DQN training
 └── README.md
