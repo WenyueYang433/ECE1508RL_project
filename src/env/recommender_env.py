@@ -8,7 +8,9 @@ from transitions import build_offline_transitions, _item_matrix
 
 
 class RecoEnv:
-    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, keep_top_n: int = 1000, popularity_penalty: float = 0.0) -> None:
+    def __init__( self,  data_dir: str = "data/ml-latest-small", val_ratio: float = 0.2,  repeat_penalty: float = 0.0, keep_top_n: int = 1000, 
+                 popularity_penalty: float = 0.0,
+                 history_window: int = 10) -> None:
         loader = MovieLensLoader(data_dir).load_all()
         prep = DatasetPrep(loader)
 
@@ -23,17 +25,23 @@ class RecoEnv:
         item_matrix, feature_names = _item_matrix(movie_features)
         self.item_matrix = item_matrix  # [n_movies, feat_dim]
         self.feature_names = feature_names
-
+        
+        self.history_window = history_window
+        
         # offline transitions
         self.transitions_train = build_offline_transitions(
-            train_df, item_matrix, repeat_penalty=repeat_penalty, popularity_penalty=popularity_penalty
+            train_df, item_matrix, repeat_penalty=repeat_penalty, popularity_penalty=popularity_penalty,
+            history_window = self.history_window
         )
         self.transitions_val = build_offline_transitions(
-            val_df, item_matrix, repeat_penalty=repeat_penalty, popularity_penalty=popularity_penalty
+            val_df, item_matrix, repeat_penalty=repeat_penalty, popularity_penalty=popularity_penalty,
+            history_window = self.history_window
         )
 
 
-        self.state_dim: int = self.transitions_train["state"].shape[1]
+        #Old: self.state_dim: int = self.transitions_train["state"].shape[1]
+        feat_dim = item_matrix.shape[1]
+        self.state_dim = feat_dim * self.history_window
         self.n_actions: int = item_matrix.shape[0]
 
         print(

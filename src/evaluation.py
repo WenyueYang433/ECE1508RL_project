@@ -36,7 +36,8 @@ def prepare_evaluation_data(
     data_dir: Path, 
     val_ratio: float, 
     keep_top_n: int, 
-    min_ratings: int
+    min_ratings: int,
+    history_window: int
 ) -> Dict[str, Any]:
     """
     Loads data using settings from Hyperparameters.
@@ -69,7 +70,7 @@ def prepare_evaluation_data(
     
     # Build User State & History (Seen)
     item_matrix, _ = _item_matrix(movie_features)
-    user_state = build_user_state_vectors(train_df, item_matrix)
+    user_state = build_user_state_vectors(train_df, item_matrix, history_window)
     
     seen_train = defaultdict(set)
     for _, row in train_df.iterrows():
@@ -185,15 +186,36 @@ def eval_prcp(
     }
     return results
 
-def build_user_state_vectors(train_df, item_matrix: np.ndarray) -> dict[int, np.ndarray]:
+def build_user_state_vectors(train_df, item_matrix: np.ndarray,history_window: int) -> dict[int, np.ndarray]:
     user_movies = defaultdict(list)
-    for _, row in train_df.iterrows():
+    # Ensure sequential order
+    train_df_sorted = train_df.sort_values(["user_key", "timestamp"])
+    
+    for _, row in train_df_sorted.iterrows():
         user_movies[int(row["user_key"])].append(int(row["movie_key"]))
 
+    feat_dim = item_matrix.shape[1]
+    empty_feat = np.zeros(feat_dim, dtype=np.float32)
+    
     user_state = {}
     for u, movies in user_movies.items():
-        if movies:
-            user_state[u] = item_matrix[movies].mean(axis=0).astype(np.float32)
+        
+        # get the last N movie
+        history_keys = movies[-history_window:]
+        padding_needed = history_window - len(history_keys)
+        
+        vector_stack = []
+        
+        # add padding to front
+        for _ in range(padding_needed):
+            vector_stack.append(empty_feat)
+            
+        # add movie
+        for key in history_keys:
+            vector_stack.append(item_matrix[key])
+            
+        state_vec = np.concatenate(vector_stack).astype(np.float32)
+        user_state[u] = state_vec
     return user_state
 
 def make_dqn_recommender(dqn_model: DQN, user_state, seen_train, movie_ids_by_key, n_actions, device):
@@ -265,7 +287,8 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
         data_dir, 
         val_ratio=hp.val_ratio, 
         keep_top_n=hp.keep_top_n, 
-        min_ratings=hp.min_ratings
+        min_ratings=hp.min_ratings,
+        history_window=hp.history_window
     )
     
     # Load Model
@@ -274,7 +297,8 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     if getattr(hp, "use_dueling", False): Net = DuelingDQN
     else: Net = DQN
 
-    dqn = Net(num_actions=data['n_actions'], feature_size=data['feat_dim']).to(device)
+    state_input_dim = data['feat_dim'] * hp.history_window
+    dqn = Net(num_actions=data['n_actions'], feature_size=state_input_dim).to(device)
 
     
     if model_path.exists():
