@@ -29,7 +29,8 @@ def main():
         val_ratio=hp.val_ratio, 
         keep_top_n=hp.keep_top_n, 
         repeat_penalty=0.1,      
-        popularity_penalty=0.01
+        popularity_penalty=0.01,
+        history_window = hp.history_window
     )
     
     agent = Agent(env, hp)
@@ -39,7 +40,8 @@ def main():
         data_dir, 
         val_ratio=hp.val_ratio, 
         keep_top_n=hp.keep_top_n, 
-        min_ratings=hp.min_ratings
+        min_ratings=hp.min_ratings,
+        history_window = hp.history_window
     )
     
     # Run Training
