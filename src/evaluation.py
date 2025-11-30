@@ -299,27 +299,63 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     # Determine Dimensions
     single_movie_dim = data['feat_dim']
     flattened_dim = data['feat_dim'] * hp.history_window
-    
-    if getattr(hp, "use_grudqn", False):
-        print("--- Evaluator: Using GRU Architecture ---")
+
+    # If a checkpoint exists, inspect its keys to auto-detect whether it was
+    # saved from a GRU-based model or from the flattened-MLP DQN. This avoids
+    # loading mismatched state dicts (common when switching architectures).
+    ckpt_is_gru = None
+    state_dict = None
+    if model_path.exists():
+        try:
+            state_dict = torch.load(model_path, map_location=device)
+            # If the saved object is a dict with 'state_dict' key (common), unwrap it
+            if isinstance(state_dict, dict) and "state_dict" in state_dict:
+                state_dict = state_dict["state_dict"]
+        except Exception:
+            state_dict = None
+
+    if state_dict is not None:
+        keys = list(state_dict.keys())
+        # GRU checkpoints include GRU parameters (prefix 'gru') or 'fc_q' head
+        if any(k.startswith("gru.") for k in keys) or any(k.startswith("fc_q.") for k in keys):
+            ckpt_is_gru = True
+        else:
+            # MLP-style DQN has 'out' / 'fc2' / 'fc3' layers in our older implementation
+            if any(k.startswith("out.") or k.startswith("fc2.") or k.startswith("fc3.") for k in keys):
+                ckpt_is_gru = False
+
+    # Decide which Net to instantiate. Preference order:
+    # 1) If checkpoint indicates GRU/MLP -> use that.
+    # 2) Else use hyperparameter flags.
+    if ckpt_is_gru is True:
+        print("--- Evaluator: Detected GRU checkpoint; using GRU architecture ---")
         Net = GRU_DQN
         input_dim = single_movie_dim
-    elif getattr(hp, "use_dueling", False): 
-        Net = DuelingDQN
+    elif ckpt_is_gru is False:
+        print("--- Evaluator: Detected MLP checkpoint; using flattened-MLP architecture ---")
+        # Respect dueling flag if present
+        if getattr(hp, "use_dueling", False):
+            Net = DuelingDQN
+        else:
+            Net = DQN
         input_dim = flattened_dim
-    else: 
-        Net = DQN
-        input_dim = flattened_dim
+    else:
+        # No checkpoint info: fall back to hyperparameters
+        if getattr(hp, "use_grudqn", False):
+            print("--- Evaluator: Using GRU Architecture (from hyperparameters) ---")
+            Net = GRU_DQN
+            input_dim = single_movie_dim
+        else:
+            if getattr(hp, "use_dueling", False):
+                Net = DuelingDQN
+            else:
+                Net = DQN
+            input_dim = flattened_dim
 
-    if getattr(hp, "use_dueling", False): Net = DuelingDQN
-    else: Net = DQN
-
-    state_input_dim = data['feat_dim'] * hp.history_window
-    # dqn = Net(num_actions=data['n_actions'], feature_size=state_input_dim).to(device)
+    # Instantiate model; try common constructor signatures (input_dim vs feature_size)
     try:
         dqn = Net(num_actions=data['n_actions'], input_dim=input_dim).to(device)
     except TypeError:
-        # Fallback for previous version
         dqn = Net(num_actions=data['n_actions'], feature_size=input_dim).to(device)
 
     
