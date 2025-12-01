@@ -7,6 +7,8 @@ import sys
 import numpy as np
 import pandas as pd
 import torch
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 SRC_DIR = Path(__file__).resolve().parent
@@ -37,7 +39,8 @@ def prepare_evaluation_data(
     val_ratio: float, 
     keep_top_n: int, 
     min_ratings: int,
-    history_window: int
+    history_window: int,
+    is_gru: bool = False
 ) -> Dict[str, Any]:
     """
     Loads data using settings from Hyperparameters.
@@ -70,7 +73,7 @@ def prepare_evaluation_data(
     
     # Build User State & History (Seen)
     item_matrix, _ = _item_matrix(movie_features)
-    user_state = build_user_state_vectors(train_df, item_matrix, history_window)
+    user_state = build_user_state_vectors(train_df, item_matrix, history_window,is_gru=is_gru)
     
     seen_train = defaultdict(set)
     for _, row in train_df.iterrows():
@@ -186,7 +189,8 @@ def eval_prcp(
     }
     return results
 
-def build_user_state_vectors(train_df, item_matrix: np.ndarray,history_window: int) -> dict[int, np.ndarray]:
+def build_user_state_vectors(train_df, item_matrix: np.ndarray,
+                             history_window: int, is_gru: bool = False) -> dict[int, np.ndarray]:
     user_movies = defaultdict(list)
     # Ensure sequential order
     train_df_sorted = train_df.sort_values(["user_key", "timestamp"])
@@ -214,9 +218,13 @@ def build_user_state_vectors(train_df, item_matrix: np.ndarray,history_window: i
         for key in history_keys:
             vector_stack.append(item_matrix[key])
         
-        #For GRU:    
-        # state_vec = np.concatenate(vector_stack).astype(np.float32)
-        state_vec = np.array(vector_stack, dtype=np.float32)
+        if is_gru:
+            # (window, features)
+            state_vec = np.array(vector_stack, dtype=np.float32)
+        else:
+            # flattened
+            state_vec = np.concatenate(vector_stack).astype(np.float32)
+            
         user_state[u] = state_vec
     return user_state
 
@@ -284,13 +292,15 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     if model_path is None:
         model_path = PROJECT_ROOT / hp.model_base # Default to Base model
 
+    is_gru = (hp.model_arch == "GRU")
     # Prepare Data
     data = prepare_evaluation_data(
         data_dir, 
         val_ratio=hp.val_ratio, 
         keep_top_n=hp.keep_top_n, 
         min_ratings=hp.min_ratings,
-        history_window=hp.history_window
+        history_window=hp.history_window,
+        is_gru=is_gru
     )
     
     # Load Model
@@ -300,74 +310,43 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     single_movie_dim = data['feat_dim']
     flattened_dim = data['feat_dim'] * hp.history_window
 
-    # If a checkpoint exists, inspect its keys to auto-detect whether it was
-    # saved from a GRU-based model or from the flattened-MLP DQN. This avoids
-    # loading mismatched state dicts (common when switching architectures).
-    ckpt_is_gru = None
-    state_dict = None
-    if model_path.exists():
-        try:
-            state_dict = torch.load(model_path, map_location=device)
-            # If the saved object is a dict with 'state_dict' key (common), unwrap it
-            if isinstance(state_dict, dict) and "state_dict" in state_dict:
-                state_dict = state_dict["state_dict"]
-        except Exception:
-            state_dict = None
-
-    if state_dict is not None:
-        keys = list(state_dict.keys())
-        # GRU checkpoints include GRU parameters (prefix 'gru') or 'fc_q' head
-        if any(k.startswith("gru.") for k in keys) or any(k.startswith("fc_q.") for k in keys):
-            ckpt_is_gru = True
-        else:
-            # MLP-style DQN has 'out' / 'fc2' / 'fc3' layers in our older implementation
-            if any(k.startswith("out.") or k.startswith("fc2.") or k.startswith("fc3.") for k in keys):
-                ckpt_is_gru = False
-
-    # Decide which Net to instantiate. Preference order:
-    # 1) If checkpoint indicates GRU/MLP -> use that.
-    # 2) Else use hyperparameter flags.
-    if ckpt_is_gru is True:
-        print("--- Evaluator: Detected GRU checkpoint; using GRU architecture ---")
+    if hp.model_arch == "GRU":
         Net = GRU_DQN
         input_dim = single_movie_dim
-    elif ckpt_is_gru is False:
-        print("--- Evaluator: Detected MLP checkpoint; using flattened-MLP architecture ---")
-        # Respect dueling flag if present
-        if getattr(hp, "use_dueling", False):
-            Net = DuelingDQN
-        else:
-            Net = DQN
+    elif hp.model_arch == "Dueling":
+        Net = DuelingDQN
         input_dim = flattened_dim
     else:
-        # No checkpoint info: fall back to hyperparameters
-        if getattr(hp, "use_grudqn", False):
-            print("--- Evaluator: Using GRU Architecture (from hyperparameters) ---")
-            Net = GRU_DQN
-            input_dim = single_movie_dim
-        else:
-            if getattr(hp, "use_dueling", False):
-                Net = DuelingDQN
-            else:
-                Net = DQN
-            input_dim = flattened_dim
+        Net = DQN
+        input_dim = flattened_dim
 
     # Instantiate model; try common constructor signatures (input_dim vs feature_size)
     try:
-        dqn = Net(num_actions=data['n_actions'], input_dim=input_dim).to(device)
+        dqn = Net(
+            num_actions=data['n_actions'], 
+            input_dim=input_dim, 
+            hidden_dim=hp.hidden_dim, 
+            dropout_rate=hp.dropout_rate
+        ).to(device)
     except TypeError:
-        dqn = Net(num_actions=data['n_actions'], feature_size=input_dim).to(device)
+        dqn = Net(
+            num_actions=data['n_actions'], 
+            feature_size=input_dim, 
+            hidden_dim=hp.hidden_dim, 
+            dropout_rate=hp.dropout_rate
+        ).to(device)
 
     
     if model_path.exists():
-        print(f"Loading model from {model_path}")
-        dqn.load_state_dict(torch.load(model_path, map_location=device))
+        print(f"----Loading model from {model_path}-----")
+        dqn.load_state_dict(torch.load(model_path, map_location=device), strict=False)
         print(dqn)
     else:
         print(f"WARNING: Model path {model_path} does not exist! Using random weights.")
 
-    # Evaluate 
-    print(f"Evaluating {'DDQN' if hp.use_ddqn else 'DQN'}...")
+    algo_name = "DDQN" if hp.use_double_q else "DQN"
+    print(f"Evaluating {algo_name}...")
+    
     dqn_rec = make_dqn_recommender(dqn, data['user_state'], data['seen_train'], data['movie_ids_by_key'], data['n_actions'], device)
     dqn_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], dqn_rec, data['movieid_to_features'], N=top_k)
     

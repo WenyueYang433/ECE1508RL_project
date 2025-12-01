@@ -33,7 +33,8 @@ def build_offline_transitions(
     item_matrix: np.ndarray,
     repeat_penalty: float = 0.0,
     popularity_penalty: float = 0.0,
-    history_window: int = 10  
+    history_window: int = 10,
+    is_gru: bool = False  
 ) -> Dict[str, np.ndarray]:
     df = ratings_df.sort_values(["user_key", "timestamp"]).reset_index(drop=True)
 
@@ -73,13 +74,14 @@ def build_offline_transitions(
         watched = set()
         
         for idx in range(len(movie_keys) - 1):
-            # state = running_sum / count if count > 0 else np.zeros(dim, dtype=np.float32)
-            
+
             # preserves sequence
-            # take the history, flatten into 1D vector, sequence:(t-windowSize,....,t-1 )
-            #For GRU:
-            # state = np.concatenate(history).astype(np.float32)
-            state = np.array(history, dtype=np.float32)
+            if is_gru:
+                # (window, features)
+                state = np.array(history, dtype=np.float32)
+            else:
+                # Flattened (Window * Features) (t-windowSize,....,t-1 )
+                state = np.concatenate(history).astype(np.float32)
 
             action_key = movie_keys[idx]
             rating_val = ratings[idx]
@@ -105,9 +107,10 @@ def build_offline_transitions(
             # append movie just watched to the history, remove olest one
             history.append(movie_vec)
             
-            # next_state = np.concatenate(history).astype(np.float32)
-            # For GRU
-            next_state = np.array(history, dtype=np.float32)
+            if is_gru:
+                next_state = np.array(history, dtype=np.float32)
+            else:
+                next_state = np.concatenate(history).astype(np.float32)
             
             watched.add(action_key)
             done = idx == len(movie_keys) - 2

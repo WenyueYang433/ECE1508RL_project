@@ -103,19 +103,22 @@ def fine_tune():
     # SETUP MODEL
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
     # Choose architecture: GRU vs MLP/Dueling
-    if getattr(hp, "use_grudqn", False):
+    if hp.model_arch == "GRU":
         Net = GRU_DQN
         # GRU expects input_dim = single movie feature size
         try:
-            dqn = Net(num_actions=n_actions, input_dim=feat_dim, hidden_dim=hp.hidden_dim, num_layers=getattr(hp, "gru_num_layers", 1), dropout_rate=hp.dropout_rate).to(device)
+            dqn = Net(num_actions=n_actions, input_dim=feat_dim, 
+                      hidden_dim=hp.hidden_dim, dropout_rate=hp.dropout_rate).to(device)
         except TypeError:
-            dqn = Net(num_actions=n_actions, input_dim=feat_dim, hidden_dim=hp.hidden_dim, dropout_rate=hp.dropout_rate).to(device)
+            dqn = Net(num_actions=n_actions, feature_size=feat_dim,
+                      hidden_dim=hp.hidden_dim, dropout_rate=hp.dropout_rate).to(device)
     else:
-        if getattr(hp, "use_dueling", False):
+        # MLP or Dueling
+        if hp.model_arch == "Dueling":
             Net = DuelingDQN
         else:
             Net = DQN
-        # MLP expects flattened state vector size
+        
         try:
             dqn = Net(num_actions=n_actions, input_dim=state_dim).to(device)
         except TypeError:

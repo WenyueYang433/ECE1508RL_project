@@ -13,10 +13,12 @@ class Hyperparameters:
         self.model_finetuned = "models/dqn_movielens_finetuned.pt"
         self.plot_summary = "reports/figures/training_summary.png"
         
-        # --- ALGORITHM FLAGS ---
-        self.use_ddqn = False  # Set False: standard DQN, True: Double DQN
-        self.use_dueling = False  #  Set False: standard DQN OR  Double DQN depend on self.use_ddqn
-        self.use_grudqn = True
+        # --- MODEL CONFIGURATION ---
+        # Architecture options: "MLP" (Standard), "Dueling", "GRU"
+        self.model_arch = "MLP" 
+        
+        # Algorithm variant: True = DDQN, False = DQN
+        self.use_double_q = False
         
         # --- SEQUENTIAL SETTINGS---
         self.history_window = 10  # In state, use last N movies
@@ -34,6 +36,8 @@ class Hyperparameters:
         self.base_n_updates = 5000
         self.log_interval = 500
         self.weight_decay = 1e-5
+        self.repeat_penalty = 0.1
+        self.popularity_penalty = 0.01
         
         # --- PHASE 2: FINE-TUNING (Hinge Loss) ---
         self.ft_n_steps = 2000
