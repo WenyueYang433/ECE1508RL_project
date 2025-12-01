@@ -13,13 +13,18 @@ from collections import defaultdict, Counter
 import numpy as np
 import torch
 import torch.optim as optim
+import sys
+import argparse 
+
+SRC_DIR = Path(__file__).resolve().parents[1]
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from evaluation import prepare_evaluation_data, eval_prcp, make_dqn_recommender
 from utils.collaborative import collaborative_filtering_recommend
-from agent.dqn_agent import DQN
+from agent.dqn_model import DQN
 from agent.ddqn_dueling_model import DuelingDQN
 from agent.gruDQN import GRU_DQN
-
 from utils.hyperparameters import Hyperparameters
 
 def build_global_popular(train_df, K=200):
@@ -43,17 +48,26 @@ def build_cf_candidates(train_df_id, K=200):
         candidates[int(u)] = list(recs["movieId"].values)
     return candidates
 
-def fine_tune():
-
+def fine_tune(model_path_str: str):
     hp = Hyperparameters()
     PROJECT_ROOT = Path(__file__).resolve().parents[1]
     
     data_dir = PROJECT_ROOT / hp.data_rel_path
-    base_model_path = PROJECT_ROOT / hp.model_base
-    out_model_path = PROJECT_ROOT / hp.model_finetuned
+    
+    base_model_path = Path(model_path_str)
+    
+    # Generate a new output name based on the input name
+    out_filename = base_model_path.stem + "_finetuned.pt"
+    out_model_path = PROJECT_ROOT / "models" / out_filename
 
+    is_gru = (hp.model_arch == "GRU")
     print(f"--- Starting Fine-Tuning Pipeline ---")
-    print(f"Config: Steps={hp.ft_n_steps}, LR={hp.ft_lr}, Margin={hp.margin}")
+    print(f"Base Model: {base_model_path}")
+    print(f"Output Model: {out_model_path}")
+    print(f"Arch: {hp.model_arch} | Steps={hp.ft_n_steps}, LR={hp.ft_lr}, Margin={hp.margin}")
+
+    if not base_model_path.exists():
+        raise FileNotFoundError(f"The model file does not exist: {base_model_path}")
 
     # LOAD DATA
     data = prepare_evaluation_data(
@@ -61,7 +75,8 @@ def fine_tune():
         val_ratio=hp.val_ratio,          
         keep_top_n=hp.keep_top_n, 
         min_ratings=hp.min_ratings,
-        history_window=hp.history_window            
+        history_window=hp.history_window,
+        is_gru=is_gru 
     )
     
     # Unpack for convenience
@@ -102,10 +117,9 @@ def fine_tune():
     
     # SETUP MODEL
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
-    # Choose architecture: GRU vs MLP/Dueling
+    
     if hp.model_arch == "GRU":
         Net = GRU_DQN
-        # GRU expects input_dim = single movie feature size
         try:
             dqn = Net(num_actions=n_actions, input_dim=feat_dim, 
                       hidden_dim=hp.hidden_dim, dropout_rate=hp.dropout_rate).to(device)
@@ -120,25 +134,19 @@ def fine_tune():
             Net = DQN
         
         try:
-            dqn = Net(num_actions=n_actions, input_dim=state_dim).to(device)
+            dqn = Net(num_actions=n_actions, input_dim=state_dim, hidden_dim=hp.hidden_dim, dropout_rate=hp.dropout_rate).to(device)
         except TypeError:
-            dqn = Net(num_actions=n_actions, feature_size=state_dim).to(device)
+            dqn = Net(num_actions=n_actions, feature_size=state_dim, hidden_dim=hp.hidden_dim, dropout_rate=hp.dropout_rate).to(device)
     
-    if base_model_path.exists():
-        state = torch.load(base_model_path, map_location=device)
-        # checkpoint may be a raw state_dict or a wrapped dict
-        if isinstance(state, dict) and "state_dict" in state:
-            state = state["state_dict"]
-        try:
-            dqn.load_state_dict(state)
-            print(f"Loaded Base Model from {base_model_path}")
-        except Exception as e:
-            print(f"Warning: failed to load checkpoint into chosen architecture: {e}")
-            print("Attempting to load permissively (ignore missing/unexpected keys)...")
-            dqn.load_state_dict(state, strict=False)
-            print(f"Loaded Base Model (with strict=False) from {base_model_path}")
-    else:
-        print("WARNING: No base model found; training from scratch (Not Recommended).")
+    # Load Base Model
+    state = torch.load(base_model_path, map_location=device)
+    if isinstance(state, dict) and "state_dict" in state:
+        state = state["state_dict"]
+    try:
+        dqn.load_state_dict(state, strict=False) 
+        print(f"Loaded Base Model weights from {base_model_path}")
+    except Exception as e:
+        print(f"Warning: failed to load checkpoint: {e}")
 
     # Use Fine-Tuning specific LR and Decay
     optimizer = optim.Adam(dqn.parameters(), lr=hp.ft_lr, weight_decay=hp.ft_weight_decay)
@@ -201,28 +209,15 @@ def fine_tune():
                     negs.append(n)
 
             us = user_state.get(u)
-            if getattr(hp, "use_grudqn", False):
-                if us is None:
+            if us is None:
+                if is_gru:
                     s = np.zeros((hp.history_window, feat_dim), dtype=np.float32)
                 else:
-                    arr = np.array(us, dtype=np.float32)
-                    if arr.ndim == 1 and arr.size == state_dim:
-                        s = arr.reshape(hp.history_window, feat_dim)
-                    elif arr.ndim == 2 and arr.shape[0] == hp.history_window and arr.shape[1] == feat_dim:
-                        s = arr
-                    else:
-                        s = arr.reshape(hp.history_window, feat_dim)
-                states.append(s)
-            else:
-                if us is None:
                     s = np.zeros(state_dim, dtype=np.float32)
-                else:
-                    arr = np.array(us, dtype=np.float32)
-                    if arr.ndim == 2:
-                        s = arr.reshape(-1)
-                    else:
-                        s = arr
-                states.append(s)
+            else:
+                s = us 
+
+            states.append(s)
             pos_idx.append(pos)
             neg_idx.append(negs)
 
@@ -306,4 +301,8 @@ def fine_tune():
 
 
 if __name__ == "__main__":
-    fine_tune()
+    parser = argparse.ArgumentParser(description="Fine-tune a pretrained DQN model.")
+    parser.add_argument("--model-path", type=str, required=True, help="Path to the .pt model file to fine-tune")
+    
+    args = parser.parse_args()
+    fine_tune(args.model_path)
