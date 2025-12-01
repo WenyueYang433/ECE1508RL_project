@@ -6,6 +6,7 @@ import numpy as np
 from utils.replay_buffer import ReplayBuffer
 from agent.dqn_model import DQN
 from agent.ddqn_dueling_model import DuelingDQN
+from agent.gruDQN import GRU_DQN
 
 class Agent:
     def __init__(self, env, hyperparameters, device=None):
@@ -29,23 +30,35 @@ class Agent:
 
 
         self.num_actions = env.n_actions
-        feature_size = env.state_dim  
-
+       
+        #For GRU: need feature size of ONE movie
+        if hasattr(env, 'item_matrix'):
+            single_movie_dim = env.item_matrix.shape[1]
+        else:
+            single_movie_dim = env.state_dim // env.history_window
+        # For MLP we need total flattened size
+        flattened_dim = env.state_dim 
+          
         self.replay_buffer = ReplayBuffer(self.hp.buffer_size)
 
-        if getattr(self.hp, "use_dueling", False):
-            print("--- Using Dueling Network Architecture ---")
+        if self.hp.model_arch == "GRU":
+            Net = GRU_DQN
+            input_arg = single_movie_dim
+        elif self.hp.model_arch == "Dueling":
             Net = DuelingDQN
-        else:
-            print("--- Using Standard Network Architecture ---")
+            input_arg = flattened_dim
+        else: 
+            # Standard MLP
             Net = DQN
+            input_arg = flattened_dim
  
         self.onlineDQN = Net(num_actions=self.num_actions,  
-                             feature_size=feature_size,
+                             input_dim=input_arg,
                              hidden_dim=self.hp.hidden_dim, 
                              dropout_rate=self.hp.dropout_rate).to(self.device)
         self.targetDQN =  Net(num_actions=self.num_actions, 
-                             feature_size=feature_size,
+                            #  feature_size=feature_size,
+                             input_dim=input_arg,
                              hidden_dim=self.hp.hidden_dim,  
                              dropout_rate=self.hp.dropout_rate).to(self.device)
         self.targetDQN.load_state_dict(self.onlineDQN.state_dict())
@@ -152,6 +165,9 @@ class Agent:
         return action
 
     def apply_SGD(self, ended: bool):
+        
+        self.onlineDQN.train()
+        
         states, actions, rewards, next_states, terminals = \
             self.replay_buffer.sample(self.hp.batch_size)
 
@@ -173,13 +189,13 @@ class Agent:
 
         # r + gamma * max_a' Q_target(s', a') * (1 - done)
         with torch.no_grad():
-            if self.hp.use_ddqn:
-                # --- Double DQN (DDQN) ---
+            if self.hp.use_double_q:
+                # DDQN
                 # Online Net selects action, Target Net evaluates it
                 next_actions = self.onlineDQN(next_states).argmax(dim=1, keepdim=True)
                 Q_next = self.targetDQN(next_states).gather(1, next_actions)
             else:
-                # --- Standard DQN ---
+                # Standard DQN
                 # Target Net does BOTH selection and evaluation
                 Q_next_all = self.targetDQN(next_states)
                 Q_next, _ = Q_next_all.max(dim=1, keepdim=True)
@@ -188,7 +204,6 @@ class Agent:
             Q_next[terminals] = 0.0
             y = rewards + self.hp.gamma * Q_next
 
-        # MSE loss
         loss = self.loss_function(Q_hat, y)
 
         self.optimizer.zero_grad()

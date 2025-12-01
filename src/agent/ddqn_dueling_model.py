@@ -1,12 +1,12 @@
 import torch.nn as nn
 
 class DuelingDQN(nn.Module):
-    def __init__(self, num_actions, feature_size, hidden_dim=256, dropout_rate=0.2):
+    def __init__(self, num_actions, input_dim, hidden_dim=256, dropout_rate=0.2):
         super(DuelingDQN, self).__init__()
         
         #Feature Extractor
         self.feature_layer = nn.Sequential(
-            nn.Linear(feature_size, hidden_dim),
+            nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
             nn.Dropout(p=dropout_rate),
             nn.Linear(hidden_dim, hidden_dim)    # Extra layer for non-linearity
