@@ -50,3 +50,39 @@ ECE1508RL_project/
    ```bash
    pip install pandas numpy matplotlib torch
    ```
+
+## How to Run
+
+### 1. Configure Settings
+All model settings are managed in **`src/utils/hyperparameters.py`**.
+- Set `self.model_arch` to `"MLP"`, `"Dueling"`, or `"GRU"`.
+- Set `self.use_double_q` to `True` for Double DQN (DDQN).
+
+### 2. Train the Base Model
+Run the main script to train the agent on user ratings
+```bash
+python src/main.py
+````
+
+  * **Output:** Saves a timestamped model to `models/` (e.g., `MLP_DDQN_20251201_134722.pt`), a training log to `reports`, (e.g.`\training_log_20251201_140613.log` a training plot to `reports/figures/`.
+
+
+### 3. Fine-Tune 
+
+Fine tune the model with:
+
+```bash
+# Uses the trained base model as a starting point
+python src/fine_tune_candidate.py --model-path "models/MLP_DDQN_20251201_134722.pt"
+```
+
+  * **Output:** Saves a new model ending in `_finetuned.pt` (e.g., `MLP_DDQN_20251201_134722_finetuned.pt`).
+
+### 4. Evaluate a Model
+
+Evaluate trained model against the baselines 
+
+```bash
+# Replace the filename with the  actual saved model path
+python src/evaluation.py --model-type custom --custom-path "models/MLP_DDQN_20251201_134722.pt"
+```
