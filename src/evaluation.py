@@ -24,6 +24,7 @@ try:
     from agent.gruDQN import GRU_DQN
     from utils.collaborative import collaborative_filtering_recommend
     from utils.hyperparameters import Hyperparameters
+    from utils.random_rec import random_recommend
 except ImportError:
     from .data_loader import MovieLensLoader
     from .data_processor import DatasetPrep
@@ -33,7 +34,8 @@ except ImportError:
     from .agent.gruDQN import GRU_DQN
     from .utils.collaborative import collaborative_filtering_recommend
     from .utils.hyperparameters import Hyperparameters
-
+    from .utils.random_rec import random_recommend
+    
 def prepare_evaluation_data(
     data_dir: Path, 
     val_ratio: float, 
@@ -256,6 +258,12 @@ def make_cf_recommender(train_df_id: pd.DataFrame):
             return []
     return recommend
 
+def make_random_recommender(train_df_id: pd.DataFrame, seed: int = 42):
+    def recommend(user_id: int, N: int):
+        rec_df = random_recommend(train_df_id, user_id=user_id, n_recs=N, seed=seed)
+        return list(rec_df["movieId"].values) if (rec_df is not None and not rec_df.empty) else []
+    return recommend
+
 # --- PLOTTING ---
 def _print_metrics_block(title: str, metrics: dict[str, float | dict], indent: int = 0) -> None:
     prefix = " " * indent
@@ -263,19 +271,22 @@ def _print_metrics_block(title: str, metrics: dict[str, float | dict], indent: i
     for key, value in metrics.items():
         print(f"{' ' * (indent + 2)}{key}: {value:.4f}")
 
-def _visualize_metrics(project_root, dqn_metrics, cf_metrics, top_k):
+def _visualize_metrics(project_root, dqn_metrics, cf_metrics, rnd_metrics, top_k):
     figures_dir = project_root / "reports" / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
     
     metric_names = [f"Precision@{top_k}", f"Recall@{top_k}", f"NDCG@{top_k}", f"MAP@{top_k}"]
     dqn_vals = [float(dqn_metrics.get(name, 0.0)) for name in metric_names]
     cf_vals = [float(cf_metrics.get(name, 0.0)) for name in metric_names]
-    
+    rnd_vals = [float(rnd_metrics.get(name, 0.0)) for name in metric_names]
+
     x = np.arange(len(metric_names))
-    width = 0.35
-    fig, ax = plt.subplots(figsize=(8, 4))
+    width = 0.25
+    fig, ax = plt.subplots(figsize=(10, 5))
     ax.bar(x - width/2, dqn_vals, width, label="DQN", color="#4C72B0")
     ax.bar(x + width/2, cf_vals, width, label="CF", color="#55A868")
+    ax.bar(x - width, rnd_vals, width, label="Random", color="#95a5a6")
+
     ax.set_xticks(x)
     ax.set_xticklabels(metric_names, rotation=20, ha="right")
     ax.set_title(f"Top-{top_k} Ranking Metrics")
@@ -355,16 +366,23 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     cf_rec = make_cf_recommender(data['train_df_id'])
     cf_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], cf_rec, data['movieid_to_features'], N=top_k)
     
-    print(f"\n=== Top-{top_k} Results ===")
-    _print_metrics_block("DQN", dqn_metrics)
+    # Evaluating  random rec
+    print("Evaluating Random Baseline...")
+    rnd_rec = make_random_recommender(data['train_df_id'])
+    rnd_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], rnd_rec, data['movieid_to_features'], N=top_k)
+
+    print(f"\n=== Top-{top_k} Results Comparison ===")
+    _print_metrics_block("Random (Lower Bound)", rnd_metrics)
     print("")
-    _print_metrics_block("CF (Baseline)", cf_metrics)
+    _print_metrics_block("CF (Strong Baseline)", cf_metrics)
+    print("")
+    _print_metrics_block("DQN (Agent)", dqn_metrics)
     
     if not no_plots:
-        _visualize_metrics(PROJECT_ROOT, dqn_metrics, cf_metrics, top_k)
+        _visualize_metrics(PROJECT_ROOT, dqn_metrics, cf_metrics, rnd_metrics, top_k)
         print("\nPlots saved to reports/figures/")
 
-    return dqn_metrics, cf_metrics
+    return dqn_metrics, cf_metrics, rnd_metrics
 
 if __name__ == "__main__":
 
