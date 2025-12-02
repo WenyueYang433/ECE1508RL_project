@@ -15,6 +15,7 @@ import torch
 import torch.optim as optim
 import sys
 import argparse 
+from datetime import datetime
 
 SRC_DIR = Path(__file__).resolve().parents[1]
 if str(SRC_DIR) not in sys.path:
@@ -26,6 +27,7 @@ from agent.dqn_model import DQN
 from agent.ddqn_dueling_model import DuelingDQN
 from agent.gruDQN import GRU_DQN
 from utils.hyperparameters import Hyperparameters
+from utils.logger import Logger
 
 def build_global_popular(train_df, K=200):
     """Returns top-K most popular movie_keys."""
@@ -51,6 +53,12 @@ def build_cf_candidates(train_df_id, K=200):
 def fine_tune(model_path_str: str):
     hp = Hyperparameters()
     PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    # Setup Logging (mirror main.py behavior)
+    log_dir = PROJECT_ROOT / "reports"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_filename = f"fine_tune_log_{datetime.now():%Y%m%d_%H%M%S}.log"
+    sys.stdout = Logger(log_dir / log_filename)
+    sys.stderr = sys.stdout
     
     data_dir = PROJECT_ROOT / hp.data_rel_path
     

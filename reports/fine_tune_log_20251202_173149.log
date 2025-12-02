@@ -1,0 +1,53 @@
+--- Starting Fine-Tuning Pipeline ---
+Base Model: /Users/lingyunguo/Documents/ECE1508RL_project/models/MLP_DDQN_20251202_172741.pt
+Output Model: /Users/lingyunguo/Documents/ECE1508RL_project/models/MLP_DDQN_20251202_172741_finetuned.pt
+Arch: MLP | Steps=2000, LR=1e-05, Margin=0.5
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Generating Hard Negatives...
+Building CF candidates for 507 users (this may take a minute)...
+Loaded Base Model weights from /Users/lingyunguo/Documents/ECE1508RL_project/models/MLP_DDQN_20251202_172741.pt
+Evaluating Base Model Performance...
+Base Precision@10: 0.1792 | Base NDCG@10: 0.1918
+Starting Fine-Tuning (2000 steps)...
+Step 200/2000 | Hinge Loss: 0.3940
+  > Eval: Precision@10=0.1750 | NDCG@10=0.1901
+  > New Best Model Saved!
+Step 400/2000 | Hinge Loss: 0.3805
+  > Eval: Precision@10=0.1625 | NDCG@10=0.1828
+Step 600/2000 | Hinge Loss: 0.4937
+  > Eval: Precision@10=0.1625 | NDCG@10=0.1839
+Step 800/2000 | Hinge Loss: 0.4449
+  > Eval: Precision@10=0.1583 | NDCG@10=0.1848
+Step 1000/2000 | Hinge Loss: 0.3426
+  > Eval: Precision@10=0.1667 | NDCG@10=0.1853
+Step 1200/2000 | Hinge Loss: 0.3894
+  > Eval: Precision@10=0.1542 | NDCG@10=0.1751
+Step 1400/2000 | Hinge Loss: 0.4637
+  > Eval: Precision@10=0.1542 | NDCG@10=0.1713
+Step 1600/2000 | Hinge Loss: 0.3828
+  > Eval: Precision@10=0.1542 | NDCG@10=0.1698
+Step 1800/2000 | Hinge Loss: 0.3435
+  > Eval: Precision@10=0.1542 | NDCG@10=0.1662
+Step 2000/2000 | Hinge Loss: 0.3346
+  > Eval: Precision@10=0.1500 | NDCG@10=0.1597
+Fine-tuning complete. Best model saved to /Users/lingyunguo/Documents/ECE1508RL_project/models/MLP_DDQN_20251202_172741_finetuned.pt
+
+Loading best fine-tuned model for final report...
+Running full validation on Best Model...
+
+=== Final Fine-Tuned Results ===
+Precision@10: 0.1750
+Recall@10: 0.0550
+NDCG@10: 0.1901
+MAP@10: 0.1178
+HitRate: 0.5833
+Coverage@Catalog: 0.0780
+Coverage@User: 0.0100
+Popularity: 4.7478
+Novelty: 0.8232
+Diversity(ILD): 0.5701
+
+Top-20 Recommended MovieIDs (After): [(np.int64(318), 238), (np.int64(58559), 233), (np.int64(527), 207), (np.int64(1198), 206), (np.int64(356), 192), (np.int64(2028), 180), (np.int64(858), 173), (np.int64(7361), 141), (np.int64(1617), 141), (np.int64(1197), 125), (np.int64(2762), 124), (np.int64(296), 117), (np.int64(2959), 112), (np.int64(593), 108), (np.int64(1136), 103), (np.int64(924), 99), (np.int64(2858), 93), (np.int64(1196), 93), (np.int64(32), 92), (np.int64(3147), 91)]

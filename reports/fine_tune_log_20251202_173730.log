@@ -1,0 +1,53 @@
+--- Starting Fine-Tuning Pipeline ---
+Base Model: /Users/lingyunguo/Documents/ECE1508RL_project/models/Dueling_DQN_20251202_173438.pt
+Output Model: /Users/lingyunguo/Documents/ECE1508RL_project/models/Dueling_DQN_20251202_173438_finetuned.pt
+Arch: Dueling | Steps=2000, LR=1e-05, Margin=0.5
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Generating Hard Negatives...
+Building CF candidates for 507 users (this may take a minute)...
+Loaded Base Model weights from /Users/lingyunguo/Documents/ECE1508RL_project/models/Dueling_DQN_20251202_173438.pt
+Evaluating Base Model Performance...
+Base Precision@10: 0.2000 | Base NDCG@10: 0.2300
+Starting Fine-Tuning (2000 steps)...
+Step 200/2000 | Hinge Loss: 0.3803
+  > Eval: Precision@10=0.1792 | NDCG@10=0.2119
+  > New Best Model Saved!
+Step 400/2000 | Hinge Loss: 0.4053
+  > Eval: Precision@10=0.1542 | NDCG@10=0.1881
+Step 600/2000 | Hinge Loss: 0.3403
+  > Eval: Precision@10=0.1500 | NDCG@10=0.1643
+Step 800/2000 | Hinge Loss: 0.4177
+  > Eval: Precision@10=0.1417 | NDCG@10=0.1529
+Step 1000/2000 | Hinge Loss: 0.3878
+  > Eval: Precision@10=0.1292 | NDCG@10=0.1461
+Step 1200/2000 | Hinge Loss: 0.2932
+  > Eval: Precision@10=0.1292 | NDCG@10=0.1422
+Step 1400/2000 | Hinge Loss: 0.3228
+  > Eval: Precision@10=0.1375 | NDCG@10=0.1445
+Step 1600/2000 | Hinge Loss: 0.2987
+  > Eval: Precision@10=0.1250 | NDCG@10=0.1346
+Step 1800/2000 | Hinge Loss: 0.2612
+  > Eval: Precision@10=0.1250 | NDCG@10=0.1348
+Step 2000/2000 | Hinge Loss: 0.2824
+  > Eval: Precision@10=0.1167 | NDCG@10=0.1254
+Fine-tuning complete. Best model saved to /Users/lingyunguo/Documents/ECE1508RL_project/models/Dueling_DQN_20251202_173438_finetuned.pt
+
+Loading best fine-tuned model for final report...
+Running full validation on Best Model...
+
+=== Final Fine-Tuned Results ===
+Precision@10: 0.1792
+Recall@10: 0.0630
+NDCG@10: 0.2119
+MAP@10: 0.1224
+HitRate: 0.6250
+Coverage@Catalog: 0.0920
+Coverage@User: 0.0100
+Popularity: 4.7312
+Novelty: 0.8405
+Diversity(ILD): 0.5526
+
+Top-20 Recommended MovieIDs (After): [(np.int64(318), 226), (np.int64(2959), 223), (np.int64(858), 208), (np.int64(527), 193), (np.int64(356), 179), (np.int64(2858), 161), (np.int64(593), 148), (np.int64(260), 133), (np.int64(33794), 120), (np.int64(1196), 115), (np.int64(1), 112), (np.int64(590), 112), (np.int64(364), 98), (np.int64(2571), 98), (np.int64(608), 94), (np.int64(2028), 92), (np.int64(1617), 83), (np.int64(50), 81), (np.int64(1270), 79), (np.int64(4993), 79)]

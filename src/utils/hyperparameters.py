@@ -15,10 +15,10 @@ class Hyperparameters:
         
         # --- MODEL CONFIGURATION ---
         # Architecture options: "MLP" (Standard), "Dueling", "GRU"
-        self.model_arch = "MLP" 
+        self.model_arch = "GRU" 
         
         # Algorithm variant: True = DDQN, False = DQN
-        self.use_double_q = False
+        self.use_double_q = True
         
         # --- SEQUENTIAL SETTINGS---
         self.history_window = 10  # In state, use last N movies

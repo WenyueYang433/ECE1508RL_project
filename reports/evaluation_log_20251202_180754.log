@@ -1,0 +1,54 @@
+--- Evaluation Log Started: evaluation_log_20251202_180754.log ---
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+----Loading model from /Users/lingyunguo/Documents/ECE1508RL_project/models/GRU_DDQN_20251202_175724.pt-----
+GRU_DQN(
+  (gru): GRU(20, 256, batch_first=True)
+  (fc1): Linear(in_features=256, out_features=256, bias=True)
+  (dropout): Dropout(p=0.2, inplace=False)
+  (fc_q): Linear(in_features=256, out_features=1000, bias=True)
+)
+Evaluating DDQN...
+Evaluating CF...
+Evaluating Random Baseline...
+
+=== Top-10 Results Comparison ===
+Random (Lower Bound):
+  Precision@10: 0.0952
+  Recall@10: 0.0146
+  NDCG@10: 0.0752
+  MAP@10: 0.0276
+  HitRate: 0.6032
+  Coverage@Catalog: 0.2240
+  Coverage@User: 0.0100
+  Popularity: 4.0376
+  Novelty: 1.5446
+  Diversity(ILD): 0.7003
+
+CF (Strong Baseline):
+  Precision@10: 0.0583
+  Recall@10: 0.0075
+  NDCG@10: 0.0664
+  MAP@10: 0.0346
+  HitRate: 0.2917
+  Coverage@Catalog: 0.1720
+  Coverage@User: 0.0100
+  Popularity: 3.6498
+  Novelty: 1.9405
+  Diversity(ILD): 0.5997
+
+DQN (Agent):
+  Precision@10: 0.1958
+  Recall@10: 0.0604
+  NDCG@10: 0.2081
+  MAP@10: 0.1258
+  HitRate: 0.6250
+  Coverage@Catalog: 0.0960
+  Coverage@User: 0.0100
+  Popularity: 4.3617
+  Novelty: 1.2158
+  Diversity(ILD): 0.5247
+
+Plots saved to reports/figures/

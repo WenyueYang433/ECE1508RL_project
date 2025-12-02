@@ -1,0 +1,57 @@
+--- Starting Fine-Tuning Pipeline ---
+Base Model: /Users/lingyunguo/Documents/ECE1508RL_project/models/GRU_DQN_20251202_174531.pt
+Output Model: /Users/lingyunguo/Documents/ECE1508RL_project/models/GRU_DQN_20251202_174531_finetuned.pt
+Arch: GRU | Steps=2000, LR=1e-05, Margin=0.5
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Generating Hard Negatives...
+Building CF candidates for 507 users (this may take a minute)...
+Loaded Base Model weights from /Users/lingyunguo/Documents/ECE1508RL_project/models/GRU_DQN_20251202_174531.pt
+Evaluating Base Model Performance...
+Base Precision@10: 0.2292 | Base NDCG@10: 0.2324
+Starting Fine-Tuning (2000 steps)...
+Step 200/2000 | Hinge Loss: 0.2975
+  > Eval: Precision@10=0.1958 | NDCG@10=0.2104
+  > New Best Model Saved!
+Step 400/2000 | Hinge Loss: 0.3023
+  > Eval: Precision@10=0.2083 | NDCG@10=0.2172
+  > New Best Model Saved!
+Step 600/2000 | Hinge Loss: 0.3942
+  > Eval: Precision@10=0.2000 | NDCG@10=0.2093
+Step 800/2000 | Hinge Loss: 0.2768
+  > Eval: Precision@10=0.2125 | NDCG@10=0.2193
+  > New Best Model Saved!
+Step 1000/2000 | Hinge Loss: 0.3351
+  > Eval: Precision@10=0.2208 | NDCG@10=0.2198
+  > New Best Model Saved!
+Step 1200/2000 | Hinge Loss: 0.2850
+  > Eval: Precision@10=0.2125 | NDCG@10=0.2111
+Step 1400/2000 | Hinge Loss: 0.3216
+  > Eval: Precision@10=0.2083 | NDCG@10=0.2046
+Step 1600/2000 | Hinge Loss: 0.3097
+  > Eval: Precision@10=0.2292 | NDCG@10=0.2199
+  > New Best Model Saved!
+Step 1800/2000 | Hinge Loss: 0.2544
+  > Eval: Precision@10=0.2250 | NDCG@10=0.2133
+Step 2000/2000 | Hinge Loss: 0.2218
+  > Eval: Precision@10=0.2125 | NDCG@10=0.2037
+Fine-tuning complete. Best model saved to /Users/lingyunguo/Documents/ECE1508RL_project/models/GRU_DQN_20251202_174531_finetuned.pt
+
+Loading best fine-tuned model for final report...
+Running full validation on Best Model...
+
+=== Final Fine-Tuned Results ===
+Precision@10: 0.2292
+Recall@10: 0.0762
+NDCG@10: 0.2199
+MAP@10: 0.1298
+HitRate: 0.7083
+Coverage@Catalog: 0.0990
+Coverage@User: 0.0100
+Popularity: 4.4944
+Novelty: 1.0819
+Diversity(ILD): 0.5542
+
+Top-20 Recommended MovieIDs (After): [(np.int64(318), 204), (np.int64(260), 196), (np.int64(1270), 188), (np.int64(480), 187), (np.int64(2858), 164), (np.int64(356), 158), (np.int64(2571), 156), (np.int64(110), 155), (np.int64(648), 146), (np.int64(1), 141), (np.int64(780), 140), (np.int64(32), 133), (np.int64(316), 125), (np.int64(527), 120), (np.int64(296), 118), (np.int64(150), 106), (np.int64(364), 105), (np.int64(1198), 103), (np.int64(2), 88), (np.int64(50), 82)]
