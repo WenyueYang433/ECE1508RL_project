@@ -51,6 +51,7 @@ class DatasetPrep:
         
         # calculate movie popularity based on rating counts, keep only the top N
         pop_counts = self.ratings["movieId"].value_counts()
+        print(f"Total unique movies with ratings before filtering: {len(pop_counts)}")
         top_ids = pop_counts.nlargest(keep_top_n).index
         self.movies = self.movies[self.movies["movieId"].isin(top_ids)].copy()
         self.ratings = self.ratings[self.ratings["movieId"].isin(top_ids)].copy()

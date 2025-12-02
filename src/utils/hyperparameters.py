@@ -9,9 +9,9 @@ class Hyperparameters:
         
         # --- PATHS ---
         self.data_rel_path = "data/ml-latest-small" 
-        self.model_base = "models/dqn_movielens.pt"
-        self.model_finetuned = "models/dqn_movielens_finetuned.pt"
-        self.plot_summary = "reports/figures/training_summary.png"
+        self.model_base = "models/dqn_movielens.pt" #no longer in use 
+        self.model_finetuned = "models/dqn_movielens_finetuned.pt" #no longer in use 
+        self.plot_summary = "reports/figures/training_summary.png" #no longer in use 
         
         # --- MODEL CONFIGURATION ---
         # Architecture options: "MLP" (Standard), "Dueling", "GRU"
@@ -24,20 +24,20 @@ class Hyperparameters:
         self.history_window = 10  # In state, use last N movies
 
         # --- NN ARCHITECTURE ---
-        self.hidden_dim = 128     # width first layer 
+        self.hidden_dim = 256     # width first layer 
         self.dropout_rate = 0.2 
         
         # --- PHASE 1: BASE TRAINING ---
         self.buffer_size = 100_000
-        self.batch_size = 256
+        self.batch_size = 512
         self.learning_rate = 1e-4      
         self.gamma = 0.7
         self.target_update = 500
-        self.base_n_updates = 5000
+        self.base_n_updates = 10000
         self.log_interval = 500
         self.weight_decay = 1e-5
-        self.repeat_penalty = 0.1
-        self.popularity_penalty = 0.01
+        self.repeat_penalty = 1 # this param is NO longer in use because we implemented action masking
+        self.popularity_penalty = 0.2 #0.5 Extreme, 0.0 no penalty, exp result shows 0.1 or 0.2 have better result
         
         # --- PHASE 2: FINE-TUNING (Hinge Loss) ---
         self.ft_n_steps = 2000

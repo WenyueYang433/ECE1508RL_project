@@ -1,4 +1,9 @@
 from __future__ import annotations
+
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+
 import argparse
 from pathlib import Path
 from collections import defaultdict
@@ -10,6 +15,7 @@ import torch
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
@@ -25,6 +31,7 @@ try:
     from utils.collaborative import collaborative_filtering_recommend
     from utils.hyperparameters import Hyperparameters
     from utils.random_rec import random_recommend
+    from utils.logger import Logger
 except ImportError:
     from .data_loader import MovieLensLoader
     from .data_processor import DatasetPrep
@@ -35,6 +42,7 @@ except ImportError:
     from .utils.collaborative import collaborative_filtering_recommend
     from .utils.hyperparameters import Hyperparameters
     from .utils.random_rec import random_recommend
+    from .utils.logger import Logger
     
 def prepare_evaluation_data(
     data_dir: Path, 
@@ -127,6 +135,45 @@ def _average_precision(hits: List[int], max_rel: int) -> float:
             ap += cum_hits / idx
     return ap / max_rel
 
+def _intra_list_diversity(rec_items: List[int], item_features: Dict[int, np.ndarray]) -> float:
+    """
+    Calculates the average Cosine Distance between all pairs of items in a recommendation list.
+    Higher ILD = More diverse (e.g., [Action, Romance, Sci-Fi])
+    Lower ILD = Less diverse (e.g., [Action, Action, Action])
+    """
+    if len(rec_items) < 2:
+        return 0.0
+        
+    # feature vectors for the recommended items
+    features = []
+    for mid in rec_items:
+        # Safety check: ensure we have features for this movie
+        if mid in item_features:
+            features.append(item_features[mid])
+            
+    if len(features) < 2:
+        return 0.0
+    
+    features = np.array(features, dtype=np.float32)
+    
+    # Normalize features (L2 norm) for Cosine Similarity calculation
+    norms = np.linalg.norm(features, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0 # Avoid division by zero
+    normalized_features = features / norms
+    
+    #  Similarity Matrix 
+    sim_matrix = normalized_features @ normalized_features.T
+    
+
+    dist_matrix = 1.0 - sim_matrix
+    
+    n = features.shape[0]
+    upper_indices = np.triu_indices(n, k=1)
+    
+    avg_dist = np.mean(dist_matrix[upper_indices])
+    
+    return float(avg_dist)
+
 def eval_prcp(
     train_df_id: pd.DataFrame,
     test_df_id: pd.DataFrame,
@@ -167,6 +214,9 @@ def eval_prcp(
         metrics['map'].append(_average_precision(hits, min(len(test_items), len(rec_items), N)))
         metrics['coverage_user'].append(len(set(rec_items)) / float(n_items_total))
 
+        ild_score = _intra_list_diversity(rec_items, item_features)
+        metrics['ild'].append(ild_score)
+        
         all_rec_items.extend(rec_items)
         
         for i in rec_items:
@@ -185,12 +235,64 @@ def eval_prcp(
         f"MAP@{N}": np.mean(metrics['map']),
         "HitRate": hit_users / len(metrics['precision']) if metrics['precision'] else 0.0,
         "Coverage@Catalog": len(set(all_rec_items)) / float(n_items_total),
-        "Coverage@User": np.mean(metrics['coverage_user']),
+        "Coverage@User": np.mean(metrics['coverage_user']), #  this metrics is  no longer in use, it's  mathematically forced to be 0.01.
         "Popularity": pop_sum / total_recs,
         "Novelty": novelty_sum / total_recs,
+        "Diversity(ILD)": np.mean(metrics['ild'])
     }
     return results
 
+def analyze_q_distribution(agent, data, hp, project_root):
+    """
+    Plots Q-values for Popular vs. Unpopular items to see the effect of the penalty.
+    """
+    print("\n--- Analyzing Q-Value Distribution ---")
+    
+    # 1. Identify Popular vs Niche items
+    # (We use the same logic as your transitions.py)
+    counts = data['train_df_id']['movieId'].value_counts()
+    top_200 = set(counts.index[:200]) # Top 20% = Popular
+    
+    pop_q_values = []
+    niche_q_values = []
+    
+    # 2. Sample 100 users
+    test_users = list(data['user_state'].keys())[:100]
+    
+    device = next(agent.parameters()).device
+    
+    agent.eval()
+    with torch.no_grad():
+        for u in test_users:
+            state = torch.tensor(data['user_state'][u], dtype=torch.float32).unsqueeze(0).to(device)
+            q_values = agent(state).cpu().numpy().reshape(-1)
+            
+            for key_idx, q in enumerate(q_values):
+                # Convert internal key -> external movieId
+                movie_id = data['movie_ids_by_key'][key_idx]
+                
+                if movie_id in top_200:
+                    pop_q_values.append(q)
+                else:
+                    niche_q_values.append(q)
+
+    # 3. Plot Histograms
+    plt.figure(figsize=(10, 6))
+    plt.hist(pop_q_values, bins=50, alpha=0.6, label='Popular Items (Top 200)', density=True, color='red')
+    plt.hist(niche_q_values, bins=50, alpha=0.6, label='Niche Items (Rest)', density=True, color='blue')
+    
+    plt.title(f"Q-Value Distribution (Penalty={hp.popularity_penalty})")
+    plt.xlabel("Predicted Q-Value")
+    plt.ylabel("Density")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    save_path = project_root / "reports" / "figures" / f"q_dist_penalty_{hp.popularity_penalty}.png"
+    plt.savefig(save_path)
+    print(f"Q-Value plot saved to: {save_path}")
+    plt.close()
+    
+    
 def build_user_state_vectors(train_df, item_matrix: np.ndarray,
                              history_window: int, is_gru: bool = False) -> dict[int, np.ndarray]:
     user_movies = defaultdict(list)
@@ -350,10 +452,12 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     
     if model_path.exists():
         print(f"----Loading model from {model_path}-----")
-        dqn.load_state_dict(torch.load(model_path, map_location=device), strict=False)
+        dqn.load_state_dict(torch.load(model_path, map_location=device, weights_only=True), strict=False)
         print(dqn)
     else:
-        print(f"WARNING: Model path {model_path} does not exist! Using random weights.")
+        print(f"Error: Model path {model_path} does not exist!")
+        return None, None, None
+    
 
     algo_name = "DDQN" if hp.use_double_q else "DQN"
     print(f"Evaluating {algo_name}...")
@@ -380,6 +484,10 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     
     if not no_plots:
         _visualize_metrics(PROJECT_ROOT, dqn_metrics, cf_metrics, rnd_metrics, top_k)
+        
+        # for diversity visualization 
+        # analyze_q_distribution(dqn, data, hp, PROJECT_ROOT)
+        
         print("\nPlots saved to reports/figures/")
 
     return dqn_metrics, cf_metrics, rnd_metrics
@@ -397,6 +505,17 @@ if __name__ == "__main__":
     
     # Get Model Path
     root = Path(__file__).resolve().parents[1]
+    
+    log_dir = root / "reports"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    # Generate timestamped filename: evaluation_log_YYYYMMDD_HHMMSS.log
+    log_filename = f"evaluation_log_{datetime.now():%Y%m%d_%H%M%S}.log"
+    log_filepath = log_dir / log_filename
+    
+    # Redirect print output to both console and file
+    sys.stdout = Logger(log_filepath)
+    print(f"--- Evaluation Log Started: {log_filename} ---")
+    
     if args.model_type == "finetuned":
         path = root / hp.model_finetuned
     elif args.model_type == "base":

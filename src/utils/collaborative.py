@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: int = 10, k_neighbors: int = 40, min_overlap: int = 5,) -> pd.DataFrame:
+def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: int = 10, k_neighbors: int = 40, min_overlap: int = 3,) -> pd.DataFrame:
     df = df[["userId", "movieId", "rating"]].copy()
 
     rating_mat = df.pivot_table( index="userId", columns="movieId", values="rating", aggfunc="mean")

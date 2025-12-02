@@ -1,0 +1,136 @@
+--- Starting Training: Dueling_DDQN 20251201_192411 ---
+--- Hyperparameters ---
+device: cuda
+seed: 42
+keep_top_n: 1000
+min_ratings: 5
+val_ratio: 0.2
+data_rel_path: data/ml-latest-small
+model_base: models/dqn_movielens.pt
+model_finetuned: models/dqn_movielens_finetuned.pt
+plot_summary: reports/figures/training_summary.png
+model_arch: Dueling
+use_double_q: True
+history_window: 10
+hidden_dim: 256
+dropout_rate: 0.2
+buffer_size: 100000
+batch_size: 128
+learning_rate: 5e-05
+gamma: 0.9
+target_update: 2000
+base_n_updates: 10000
+log_interval: 500
+weight_decay: 1e-05
+repeat_penalty: 1
+popularity_penalty: 0.2
+ft_n_steps: 2000
+ft_batch_size: 32
+ft_lr: 1e-05
+ft_weight_decay: 1e-05
+margin: 0.5
+neg_per_pos: 5
+use_candidates: True
+candidate_k: 200
+frac_candidate: 0.5
+---- Architecture: Dueling | Algorithm: DDQN ------
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+[RecoEnv] state_dim=200, n_actions=1000, repeat_penalty=1, popularity_penalty=0.2  
+Mode=Flattened 
+train_transitions=96990, val_transitions=24252
+[RecoEnv] reward(train): min=-1.426, max=0.997, mean=-0.118
+Sample train rewards: [ 0.8776923  -0.5         0.4823077  -0.5         0.97692305 -0.5
+  0.4076923  -0.5         0.90076923 -0.5         0.47230768 -0.5
+  0.47153845 -0.5         0.8676923  -0.5         0.43384615 -0.5
+  0.44846153 -0.5       ]
+DuelingDQN(
+  (feature_layer): Sequential(
+    (0): Linear(in_features=200, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Dropout(p=0.2, inplace=False)
+    (3): Linear(in_features=256, out_features=256, bias=True)
+  )
+  (value_stream): Sequential(
+    (0): Linear(in_features=256, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=256, out_features=1, bias=True)
+  )
+  (advantage_stream): Sequential(
+    (0): Linear(in_features=256, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=256, out_features=1000, bias=True)
+  )
+)
+[Agent] Preloaded 96990 transitions into replay buffer.
+Loading Train/Validation Data...
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Starting training for 10000 steps...
+Step  200 | Loss: 0.1324 | NDCG@10: 0.0774 | Avg Q: -0.019
+--- Best Model Saved!
+Step  400 | Loss: 0.1313 | NDCG@10: 0.1287 | Avg Q: -0.062
+--- Best Model Saved!
+Step  600 | Loss: 0.1293 | NDCG@10: 0.1429 | Avg Q: -0.096
+--- Best Model Saved!
+Step  800 | Loss: 0.1276 | NDCG@10: 0.1353 | Avg Q: -0.152
+Step 1000 | Loss: 0.1263 | NDCG@10: 0.1520 | Avg Q: -0.118
+--- Best Model Saved!
+Step 1200 | Loss: 0.1251 | NDCG@10: 0.1601 | Avg Q: -0.123
+--- Best Model Saved!
+Step 1400 | Loss: 0.1242 | NDCG@10: 0.1503 | Avg Q: -0.127
+Step 1600 | Loss: 0.1237 | NDCG@10: 0.1600 | Avg Q: -0.130
+Step 1800 | Loss: 0.1231 | NDCG@10: 0.1648 | Avg Q: -0.136
+--- Best Model Saved!
+Step 2000 | Loss: 0.1225 | NDCG@10: 0.1626 | Avg Q: -0.136
+Step 2200 | Loss: 0.1223 | NDCG@10: 0.1531 | Avg Q: 0.153
+Step 2400 | Loss: 0.1219 | NDCG@10: 0.1441 | Avg Q: 0.146
+Step 2600 | Loss: 0.1217 | NDCG@10: 0.1448 | Avg Q: 0.168
+Step 2800 | Loss: 0.1214 | NDCG@10: 0.1542 | Avg Q: 0.156
+Step 3000 | Loss: 0.1211 | NDCG@10: 0.1547 | Avg Q: 0.148
+Step 3200 | Loss: 0.1207 | NDCG@10: 0.1568 | Avg Q: 0.140
+Step 3400 | Loss: 0.1204 | NDCG@10: 0.1558 | Avg Q: 0.147
+Step 3600 | Loss: 0.1201 | NDCG@10: 0.1283 | Avg Q: 0.150
+Step 3800 | Loss: 0.1197 | NDCG@10: 0.1428 | Avg Q: 0.145
+Step 4000 | Loss: 0.1195 | NDCG@10: 0.1742 | Avg Q: 0.140
+--- Best Model Saved!
+Step 4200 | Loss: 0.1195 | NDCG@10: 0.1842 | Avg Q: 0.487
+--- Best Model Saved!
+Step 4400 | Loss: 0.1194 | NDCG@10: 0.2113 | Avg Q: 0.463
+--- Best Model Saved!
+Step 4600 | Loss: 0.1193 | NDCG@10: 0.1925 | Avg Q: 0.469
+Step 4800 | Loss: 0.1191 | NDCG@10: 0.1764 | Avg Q: 0.482
+Step 5000 | Loss: 0.1188 | NDCG@10: 0.1647 | Avg Q: 0.463
+Step 5200 | Loss: 0.1186 | NDCG@10: 0.1835 | Avg Q: 0.468
+Step 5400 | Loss: 0.1184 | NDCG@10: 0.1876 | Avg Q: 0.442
+Step 5600 | Loss: 0.1181 | NDCG@10: 0.1722 | Avg Q: 0.443
+Step 5800 | Loss: 0.1179 | NDCG@10: 0.1841 | Avg Q: 0.451
+Step 6000 | Loss: 0.1177 | NDCG@10: 0.1800 | Avg Q: 0.463
+Step 6200 | Loss: 0.1177 | NDCG@10: 0.1743 | Avg Q: 0.796
+Step 6400 | Loss: 0.1176 | NDCG@10: 0.1862 | Avg Q: 0.800
+Step 6600 | Loss: 0.1174 | NDCG@10: 0.1901 | Avg Q: 0.791
+Step 6800 | Loss: 0.1173 | NDCG@10: 0.1949 | Avg Q: 0.816
+Step 7000 | Loss: 0.1172 | NDCG@10: 0.1817 | Avg Q: 0.817
+Step 7200 | Loss: 0.1171 | NDCG@10: 0.1783 | Avg Q: 0.784
+Step 7400 | Loss: 0.1170 | NDCG@10: 0.2004 | Avg Q: 0.789
+Step 7600 | Loss: 0.1168 | NDCG@10: 0.1936 | Avg Q: 0.805
+Step 7800 | Loss: 0.1167 | NDCG@10: 0.1903 | Avg Q: 0.763
+Step 8000 | Loss: 0.1166 | NDCG@10: 0.2036 | Avg Q: 0.817
+Step 8200 | Loss: 0.1166 | NDCG@10: 0.1724 | Avg Q: 1.166
+Step 8400 | Loss: 0.1165 | NDCG@10: 0.1781 | Avg Q: 1.125
+Step 8600 | Loss: 0.1165 | NDCG@10: 0.1947 | Avg Q: 1.137
+Step 8800 | Loss: 0.1164 | NDCG@10: 0.1866 | Avg Q: 1.119
+Step 9000 | Loss: 0.1163 | NDCG@10: 0.1946 | Avg Q: 1.093
+Step 9200 | Loss: 0.1162 | NDCG@10: 0.2081 | Avg Q: 1.156
+Step 9400 | Loss: 0.1161 | NDCG@10: 0.2170 | Avg Q: 1.144
+--- Best Model Saved!
+Step 9600 | Loss: 0.1160 | NDCG@10: 0.1833 | Avg Q: 1.083
+Step 9800 | Loss: 0.1159 | NDCG@10: 0.1987 | Avg Q: 1.109
+Step 10000 | Loss: 0.1158 | NDCG@10: 0.2012 | Avg Q: 1.136
+Training Complete!
+ > Model saved to: D:\Git\1508RL\ECE1508RL_project\models\Dueling_DDQN_20251201_192411.pt
+ > Plot saved to:  D:\Git\1508RL\ECE1508RL_project\reports\figures\Dueling_DDQN_20251201_192411.png
+ > Log saved to:   D:\Git\1508RL\ECE1508RL_project\reports\training_log_20251201_192411.log
