@@ -1,0 +1,54 @@
+--- Evaluation Log Started: evaluation_log_20251202_100541.log ---
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+----Loading model from models\GRU_DDQN_20251201_190455.pt-----
+GRU_DQN(
+  (gru): GRU(20, 128, batch_first=True)
+  (fc1): Linear(in_features=128, out_features=128, bias=True)
+  (dropout): Dropout(p=0.2, inplace=False)
+  (fc_q): Linear(in_features=128, out_features=1000, bias=True)
+)
+Evaluating DDQN...
+Evaluating CF...
+Evaluating Random Baseline...
+
+=== Top-10 Results Comparison ===
+Random (Lower Bound):
+  Precision@10: 0.0728
+  Recall@10: 0.0059
+  NDCG@10: 0.0689
+  MAP@10: 0.0323
+  HitRate: 0.3440
+  Coverage@Catalog: 0.2090
+  Coverage@User: 0.0100
+  Popularity: 3.9483
+  Novelty: 1.6356
+  Diversity(ILD): 0.5997
+
+CF (Strong Baseline):
+  Precision@10: 0.0609
+  Recall@10: 0.0081
+  NDCG@10: 0.0697
+  MAP@10: 0.0340
+  HitRate: 0.3043
+  Coverage@Catalog: 0.1680
+  Coverage@User: 0.0100
+  Popularity: 3.6581
+  Novelty: 1.9320
+  Diversity(ILD): 0.6017
+
+DQN (Agent):
+  Precision@10: 0.2217
+  Recall@10: 0.0750
+  NDCG@10: 0.2316
+  MAP@10: 0.1381
+  HitRate: 0.6957
+  Coverage@Catalog: 0.1060
+  Coverage@User: 0.0100
+  Popularity: 4.0005
+  Novelty: 1.5841
+  Diversity(ILD): 0.4695
+
+Plots saved to reports/figures/
