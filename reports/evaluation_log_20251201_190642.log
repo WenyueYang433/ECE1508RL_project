@@ -1,6 +1,0 @@
---- Evaluation Log Started: evaluation_log_20251201_190642.log ---
---- Loading Data (Top 1000 movies, Min 5 ratings) ---
-Total unique movies with ratings before filtering: 9724
-Filtered to top 1000 movies. Remaining Ratings: 61256
-Filtered users with < 5 ratings. Ratings dropped: 3
-Error: Model path models\GRU_DDQN_20251201_190455.p does not exist!
