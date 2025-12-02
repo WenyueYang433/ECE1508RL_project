@@ -65,7 +65,8 @@ def main():
         val_ratio=hp.val_ratio, 
         keep_top_n=hp.keep_top_n, 
         min_ratings=hp.min_ratings,
-        history_window = hp.history_window
+        history_window = hp.history_window,
+        is_gru=is_gru
     )
     
     # Run Training
