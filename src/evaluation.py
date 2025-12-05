@@ -182,6 +182,11 @@ def eval_prcp(
     item_features: Dict[int, np.ndarray],
     N: int = 10,
 ) -> dict[str, float]:
+    
+    #user actual rating
+    rating_lookup = dict(zip(zip(test_df_id["userId"], test_df_id["movieId"]), test_df_id["rating"]))
+    
+    
     item_pop = train_df_id.groupby("movieId")["userId"].nunique()
     pop_dict = item_pop.to_dict()
     max_pop = max(pop_dict.values()) if pop_dict else 1.0
@@ -203,8 +208,22 @@ def eval_prcp(
         if not rec_items: 
             continue
         rec_items = list(dict.fromkeys(rec_items))
+        
+        # cumulative reward
+        user_cum_reward = 0.0
+        hits = []
+        for item in rec_items:
+            if item in test_items:
+                hits.append(1)
+                rating_val = rating_lookup.get((u, item), 3.0) # default to 3.0 (neutral) if error
+                reward_val = (rating_val - 3.0) / 2.0
+                user_cum_reward += reward_val
+            else:
+                hits.append(0)
 
-        hits = [1 if item in test_items else 0 for item in rec_items]
+        metrics['cum_reward'].append(user_cum_reward)
+
+        # hits = [1 if item in test_items else 0 for item in rec_items]
         rel_hits = sum(hits)
         if rel_hits > 0: hit_users += 1
 
@@ -238,7 +257,8 @@ def eval_prcp(
         "Coverage@User": np.mean(metrics['coverage_user']), #  this metrics is  no longer in use, it's  mathematically forced to be 0.01.
         "Popularity": pop_sum / total_recs,
         "Novelty": novelty_sum / total_recs,
-        "Diversity(ILD)": np.mean(metrics['ild'])
+        "Diversity(ILD)": np.mean(metrics['ild']),
+        "AverageReward": np.mean(metrics['cum_reward'])
     }
     return results
 

@@ -107,7 +107,7 @@ class Agent:
         from evaluation import eval_prcp, make_dqn_recommender
         
         print(f"Starting training for {n_updates} steps...")
-        history = {"loss": [], "ndcg": [], "q_val": [], "steps": []}
+        history = {"loss": [], "ndcg": [], "q_val": [],"reward": [], "steps": []}
         best_ndcg = 0.0
 
         for step in range(1, n_updates + 1):
@@ -119,7 +119,7 @@ class Agent:
             avg_loss = self.current_loss / self.episode_counts if self.episode_counts > 0 else 0
             history["loss"].append(avg_loss)
 
-            if val_data and step % 200 == 0:
+            if val_data and step % 100 == 0:
                 
                 #NDCG
                 rec_func = make_dqn_recommender(
@@ -131,6 +131,7 @@ class Agent:
                     val_data['n_actions'], rec_func, val_data['movieid_to_features'], N=10
                 )
                 ndcg = metrics['NDCG@10']
+                realized_reward = metrics['AverageReward']
                 
                 # Q-Value Sanity Check
                 dummy_keys = list(val_data['user_state'].keys())[:32]
@@ -142,8 +143,9 @@ class Agent:
                 history["ndcg"].append(ndcg)
                 history["q_val"].append(avg_q)
                 history["steps"].append(step)
+                history["reward"].append(realized_reward)
                 
-                print(f"Step {step:4d} | Loss: {avg_loss:.4f} | NDCG@10: {ndcg:.4f} | Avg Q: {avg_q:.3f}")
+                print(f"Step {step:4d} | Loss: {avg_loss:.4f} | NDCG@10: {ndcg:.4f} | Avg Q: {avg_q:.3f} | Reward: {realized_reward:.3f}")
 
                 # Save Best
                 if save_path and ndcg >= best_ndcg:
@@ -194,7 +196,7 @@ class Agent:
                 # Online Net selects action, Target Net evaluates it
                 next_actions = self.onlineDQN(next_states).argmax(dim=1, keepdim=True)
                 Q_next = self.targetDQN(next_states).gather(1, next_actions)
-            else:
+            else: 
                 # Standard DQN
                 # Target Net does BOTH selection and evaluation
                 Q_next_all = self.targetDQN(next_states)
