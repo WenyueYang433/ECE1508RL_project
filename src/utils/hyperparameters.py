@@ -15,7 +15,7 @@ class Hyperparameters:
         
         # --- MODEL CONFIGURATION ---
         # Architecture options: "MLP" (Standard), "Dueling", "GRU"
-        self.model_arch = "GRU" 
+        self.model_arch =  "MLP" 
         
         # Algorithm variant: True = DDQN, False = DQN
         self.use_double_q = True
@@ -29,10 +29,10 @@ class Hyperparameters:
         
         # --- PHASE 1: BASE TRAINING ---
         self.buffer_size = 100_000
-        self.batch_size = 512
-        self.learning_rate = 1e-4      
-        self.gamma = 0.7
-        self.target_update = 500
+        self.batch_size = 256
+        self.learning_rate = 3e-4      
+        self.gamma = 0.9
+        self.target_update = 1000
         self.base_n_updates = 10000
         self.log_interval = 500
         self.weight_decay = 1e-5
