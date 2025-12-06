@@ -18,8 +18,8 @@ def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: in
 
     sims = []
     for other_user, row in rating_centered.iterrows():
-        if other_user == user_id:
-            continue
+        if other_user == user_id: continue
+
         mask = target_centered.notna() & row.notna()
         if mask.sum() < min_overlap:
             sims.append((other_user, 0.0))
@@ -34,8 +34,7 @@ def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: in
             sims.append((other_user, 0.0))
             continue
 
-        sim = float(np.dot(v1, v2) / (norm1 * norm2))
-        sims.append((other_user, sim))
+        sims.append((other_user, float(np.dot(v1, v2) / (norm1 * norm2)) ))
     sims_sorted = sorted(sims, key=lambda x: x[1], reverse=True)
     neighbors = [(u, s) for (u, s) in sims_sorted if s > 0][:k_neighbors]
 
@@ -54,24 +53,15 @@ def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: in
     if len(candidate_items) == 0:
         return pd.DataFrame(columns=["movieId", "score"])
 
+    neighbor_ratings = rating_mat.loc[neighbor_ids] # [K, n_items]
     scores = []
 
     for m in candidate_items:
-        col = neighbor_centered[m]  # Series, index = neighbor_ids
-        mask = col.notna()
-        if mask.sum() == 0:
-            continue
-
-        r_center = col[mask].values          
-        s_valid = neighbor_sims[mask.values] 
-        denom = np.sum(np.abs(s_valid))
-        if denom == 0:
-            continue
-
-        pred_centered = np.sum(s_valid * r_center) / denom
-        target_mean = float(user_means.loc[user_id])
-        pred_score = target_mean + pred_centered
-
+        col_ratings = neighbor_ratings[m] 
+        mask = col_ratings.notna()
+        
+        if mask.sum() == 0: continue
+        pred_score = np.sum(neighbor_sims[mask.values] *  col_ratings[mask].values)
         scores.append((m, pred_score))
 
     if len(scores) == 0:
