@@ -119,7 +119,7 @@ class Agent:
             avg_loss = self.current_loss / self.episode_counts if self.episode_counts > 0 else 0
             history["loss"].append(avg_loss)
 
-            if val_data and step % 100 == 0:
+            if val_data and step % 200 == 0:
                 
                 #NDCG
                 rec_func = make_dqn_recommender(

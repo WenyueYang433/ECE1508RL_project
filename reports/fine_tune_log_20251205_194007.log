@@ -1,0 +1,58 @@
+--- Starting Fine-Tuning Pipeline ---
+Base Model: models\Dueling_DDQN_20251205_193312.pt
+Output Model: D:\Git\1508RL\ECE1508RL_project\models\Dueling_DDQN_20251205_193312_finetuned.pt
+Arch: Dueling | Steps=2000, LR=1e-05, Margin=0.5
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Generating Hard Negatives...
+Building CF candidates for 507 users (this may take a minute)...
+D:\Git\1508RL\ECE1508RL_project\src\fine_tune_candidate.py:150: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  state = torch.load(base_model_path, map_location=device)
+Loaded Base Model weights from models\Dueling_DDQN_20251205_193312.pt
+Evaluating Base Model Performance...
+Base Precision@10: 0.2043 | Base NDCG@10: 0.2107
+Starting Fine-Tuning (2000 steps)...
+Step 200/2000 | Hinge Loss: 0.3267
+  > Eval: Precision@10=0.2130 | NDCG@10=0.2167
+  > New Best Model Saved!
+Step 400/2000 | Hinge Loss: 0.3837
+  > Eval: Precision@10=0.2000 | NDCG@10=0.2073
+Step 600/2000 | Hinge Loss: 0.3746
+  > Eval: Precision@10=0.1913 | NDCG@10=0.1993
+Step 800/2000 | Hinge Loss: 0.3593
+  > Eval: Precision@10=0.1913 | NDCG@10=0.1974
+Step 1000/2000 | Hinge Loss: 0.3374
+  > Eval: Precision@10=0.1957 | NDCG@10=0.1993
+Step 1200/2000 | Hinge Loss: 0.3586
+  > Eval: Precision@10=0.1826 | NDCG@10=0.1860
+Step 1400/2000 | Hinge Loss: 0.3142
+  > Eval: Precision@10=0.1739 | NDCG@10=0.1815
+Step 1600/2000 | Hinge Loss: 0.3133
+  > Eval: Precision@10=0.1783 | NDCG@10=0.1841
+Step 1800/2000 | Hinge Loss: 0.3040
+  > Eval: Precision@10=0.1826 | NDCG@10=0.1859
+Step 2000/2000 | Hinge Loss: 0.3714
+  > Eval: Precision@10=0.1739 | NDCG@10=0.1783
+Fine-tuning complete. Best model saved to D:\Git\1508RL\ECE1508RL_project\models\Dueling_DDQN_20251205_193312_finetuned.pt
+
+Loading best fine-tuned model for final report...
+D:\Git\1508RL\ECE1508RL_project\src\fine_tune_candidate.py:284: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  dqn.load_state_dict(torch.load(out_model_path, map_location=device))
+Running full validation on Best Model...
+
+=== Final Fine-Tuned Results ===
+Precision@10: 0.2130
+Recall@10: 0.0658
+NDCG@10: 0.2167
+MAP@10: 0.1533
+HitRate: 0.6522
+Coverage@Catalog: 0.1140
+Coverage@User: 0.0100
+Popularity: 4.2920
+Novelty: 1.2875
+Diversity(ILD): 0.5602
+AverageReward: 0.9348
+
+Top-20 Recommended MovieIDs (After): [(np.int64(527), 160), (np.int64(1213), 157), (np.int64(318), 130), (np.int64(1221), 125), (np.int64(1), 115), (np.int64(296), 107), (np.int64(364), 102), (np.int64(1204), 100), (np.int64(2959), 95), (np.int64(2028), 90), (np.int64(2329), 80), (np.int64(1208), 76), (np.int64(2324), 76), (np.int64(858), 74), (np.int64(8961), 68), (np.int64(1196), 66), (np.int64(1136), 66), (np.int64(1089), 66), (np.int64(260), 66), (np.int64(110), 63)]
