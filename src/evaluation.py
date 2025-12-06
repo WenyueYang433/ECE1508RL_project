@@ -496,9 +496,9 @@ def run_evaluation(hp: Hyperparameters, model_path: Path = None, no_plots: bool 
     rnd_metrics = eval_prcp(data['train_df_id'], data['test_df_id'], data['n_actions'], rnd_rec, data['movieid_to_features'], N=top_k)
 
     print(f"\n=== Top-{top_k} Results Comparison ===")
-    _print_metrics_block("Random (Lower Bound)", rnd_metrics)
+    _print_metrics_block("Random", rnd_metrics)
     print("")
-    _print_metrics_block("CF (Strong Baseline)", cf_metrics)
+    _print_metrics_block("CF", cf_metrics)
     print("")
     _print_metrics_block("DQN (Agent)", dqn_metrics)
     
