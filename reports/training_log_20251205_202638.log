@@ -1,0 +1,121 @@
+--- Starting Training: GRU_DQN 20251205_202638 ---
+--- Hyperparameters ---
+device: cuda
+seed: 42
+keep_top_n: 1000
+min_ratings: 5
+val_ratio: 0.2
+data_rel_path: data/ml-latest-small
+model_base: models/dqn_movielens.pt
+model_finetuned: models/dqn_movielens_finetuned.pt
+plot_summary: reports/figures/training_summary.png
+model_arch: GRU
+use_double_q: False
+history_window: 10
+hidden_dim: 256
+dropout_rate: 0.2
+buffer_size: 100000
+batch_size: 512
+learning_rate: 0.0001
+gamma: 0.7
+target_update: 500
+base_n_updates: 10000
+weight_decay: 1e-05
+repeat_penalty: 1
+popularity_penalty: 0.2
+ft_n_steps: 2000
+ft_batch_size: 32
+ft_lr: 1e-05
+ft_weight_decay: 1e-05
+margin: 0.5
+neg_per_pos: 5
+use_candidates: True
+candidate_k: 200
+frac_candidate: 0.5
+---- Architecture: GRU | Algorithm: DQN ------
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+[RecoEnv] state_dim=20, n_actions=1000, repeat_penalty=1, popularity_penalty=0.2  
+Mode=GRU 
+train_transitions=96990, val_transitions=24252
+[RecoEnv] reward(train): min=-1.426, max=0.997, mean=-0.118
+Sample train rewards: [ 0.8776923  -0.5         0.4823077  -0.5         0.97692305 -0.5
+  0.4076923  -0.5         0.90076923 -0.5         0.47230768 -0.5
+  0.47153845 -0.5         0.8676923  -0.5         0.43384615 -0.5
+  0.44846153 -0.5       ]
+GRU_DQN(
+  (gru): GRU(20, 256, batch_first=True)
+  (fc1): Linear(in_features=256, out_features=256, bias=True)
+  (dropout): Dropout(p=0.2, inplace=False)
+  (fc_q): Linear(in_features=256, out_features=1000, bias=True)
+)
+[Agent] Preloaded 96990 transitions into replay buffer.
+Loading Train/Validation Data...
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Starting training for 10000 steps...
+Step  200 | Loss: 0.1293 | NDCG@10: 0.1446 | Avg Q: -0.050 | Reward: 1.022
+--- Best Model Saved!
+Step  400 | Loss: 0.1250 | NDCG@10: 0.1796 | Avg Q: -0.061 | Reward: 0.957
+--- Best Model Saved!
+Step  600 | Loss: 0.1246 | NDCG@10: 0.1581 | Avg Q: -0.000 | Reward: 0.924
+Step  800 | Loss: 0.1235 | NDCG@10: 0.1816 | Avg Q: 0.071 | Reward: 0.924
+--- Best Model Saved!
+Step 1000 | Loss: 0.1222 | NDCG@10: 0.1882 | Avg Q: 0.092 | Reward: 1.054
+--- Best Model Saved!
+Step 1200 | Loss: 0.1220 | NDCG@10: 0.1868 | Avg Q: 0.286 | Reward: 0.750
+Step 1400 | Loss: 0.1211 | NDCG@10: 0.1860 | Avg Q: 0.308 | Reward: 1.022
+Step 1600 | Loss: 0.1205 | NDCG@10: 0.1428 | Avg Q: 0.402 | Reward: 0.641
+Step 1800 | Loss: 0.1198 | NDCG@10: 0.1568 | Avg Q: 0.424 | Reward: 0.870
+Step 2000 | Loss: 0.1193 | NDCG@10: 0.1570 | Avg Q: 0.436 | Reward: 0.565
+Step 2200 | Loss: 0.1189 | NDCG@10: 0.1680 | Avg Q: 0.505 | Reward: 0.750
+Step 2400 | Loss: 0.1185 | NDCG@10: 0.1757 | Avg Q: 0.542 | Reward: 0.728
+Step 2600 | Loss: 0.1181 | NDCG@10: 0.1937 | Avg Q: 0.614 | Reward: 0.935
+--- Best Model Saved!
+Step 2800 | Loss: 0.1178 | NDCG@10: 0.1790 | Avg Q: 0.602 | Reward: 0.707
+Step 3000 | Loss: 0.1174 | NDCG@10: 0.2156 | Avg Q: 0.622 | Reward: 0.815
+--- Best Model Saved!
+Step 3200 | Loss: 0.1172 | NDCG@10: 0.2247 | Avg Q: 0.732 | Reward: 0.848
+--- Best Model Saved!
+Step 3400 | Loss: 0.1169 | NDCG@10: 0.2376 | Avg Q: 0.701 | Reward: 0.967
+--- Best Model Saved!
+Step 3600 | Loss: 0.1167 | NDCG@10: 0.1979 | Avg Q: 0.820 | Reward: 0.924
+Step 3800 | Loss: 0.1165 | NDCG@10: 0.2148 | Avg Q: 0.845 | Reward: 0.804
+Step 4000 | Loss: 0.1162 | NDCG@10: 0.2243 | Avg Q: 0.832 | Reward: 0.837
+Step 4200 | Loss: 0.1160 | NDCG@10: 0.2091 | Avg Q: 0.894 | Reward: 0.804
+Step 4400 | Loss: 0.1158 | NDCG@10: 0.2039 | Avg Q: 0.919 | Reward: 0.783
+Step 4600 | Loss: 0.1156 | NDCG@10: 0.2063 | Avg Q: 0.990 | Reward: 0.859
+Step 4800 | Loss: 0.1154 | NDCG@10: 0.2113 | Avg Q: 0.983 | Reward: 0.989
+Step 5000 | Loss: 0.1152 | NDCG@10: 0.2109 | Avg Q: 0.937 | Reward: 0.848
+Step 5200 | Loss: 0.1150 | NDCG@10: 0.2148 | Avg Q: 0.978 | Reward: 0.957
+Step 5400 | Loss: 0.1147 | NDCG@10: 0.2032 | Avg Q: 0.979 | Reward: 0.891
+Step 5600 | Loss: 0.1146 | NDCG@10: 0.2039 | Avg Q: 1.102 | Reward: 0.902
+Step 5800 | Loss: 0.1144 | NDCG@10: 0.2043 | Avg Q: 1.093 | Reward: 0.924
+Step 6000 | Loss: 0.1142 | NDCG@10: 0.2001 | Avg Q: 1.082 | Reward: 0.848
+Step 6200 | Loss: 0.1140 | NDCG@10: 0.2320 | Avg Q: 1.113 | Reward: 0.946
+Step 6400 | Loss: 0.1138 | NDCG@10: 0.2256 | Avg Q: 1.144 | Reward: 0.935
+Step 6600 | Loss: 0.1136 | NDCG@10: 0.2258 | Avg Q: 1.146 | Reward: 1.054
+Step 6800 | Loss: 0.1134 | NDCG@10: 0.2047 | Avg Q: 1.158 | Reward: 0.859
+Step 7000 | Loss: 0.1132 | NDCG@10: 0.1992 | Avg Q: 1.128 | Reward: 0.848
+Step 7200 | Loss: 0.1131 | NDCG@10: 0.1971 | Avg Q: 1.187 | Reward: 0.859
+Step 7400 | Loss: 0.1129 | NDCG@10: 0.1985 | Avg Q: 1.187 | Reward: 0.902
+Step 7600 | Loss: 0.1127 | NDCG@10: 0.2090 | Avg Q: 1.213 | Reward: 0.978
+Step 7800 | Loss: 0.1125 | NDCG@10: 0.2165 | Avg Q: 1.212 | Reward: 0.902
+Step 8000 | Loss: 0.1123 | NDCG@10: 0.1816 | Avg Q: 1.195 | Reward: 0.815
+Step 8200 | Loss: 0.1122 | NDCG@10: 0.1923 | Avg Q: 1.260 | Reward: 0.804
+Step 8400 | Loss: 0.1120 | NDCG@10: 0.1907 | Avg Q: 1.235 | Reward: 0.859
+Step 8600 | Loss: 0.1118 | NDCG@10: 0.2156 | Avg Q: 1.326 | Reward: 0.935
+Step 8800 | Loss: 0.1116 | NDCG@10: 0.1951 | Avg Q: 1.301 | Reward: 0.772
+Step 9000 | Loss: 0.1115 | NDCG@10: 0.2003 | Avg Q: 1.339 | Reward: 0.891
+Step 9200 | Loss: 0.1113 | NDCG@10: 0.2082 | Avg Q: 1.419 | Reward: 0.967
+Step 9400 | Loss: 0.1112 | NDCG@10: 0.1951 | Avg Q: 1.419 | Reward: 0.750
+Step 9600 | Loss: 0.1110 | NDCG@10: 0.2097 | Avg Q: 1.471 | Reward: 0.870
+Step 9800 | Loss: 0.1109 | NDCG@10: 0.2065 | Avg Q: 1.474 | Reward: 0.880
+Step 10000 | Loss: 0.1108 | NDCG@10: 0.1888 | Avg Q: 1.462 | Reward: 0.859
+Training Complete!
+ > Model saved to: D:\Git\1508RL\ECE1508RL_project\models\GRU_DQN_20251205_202638.pt
+ > Plot saved to:  D:\Git\1508RL\ECE1508RL_project\reports\figures\GRU_DQN_20251205_202638.png
+ > Log saved to:   D:\Git\1508RL\ECE1508RL_project\reports\training_log_20251205_202638.log
