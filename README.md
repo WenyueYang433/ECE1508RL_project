@@ -1,15 +1,18 @@
-# MovieLens DQN Playground
+# MovieLens DQN Recommender
 
-Lightweight sandbox for turning the MovieLens “ml-latest-small” dataset into RL-friendly training data. Everything lives under `src/` and can be run as simple Python scripts.
+Traditional approaches such as random selection or collaborative filtering treat recommendation as a one-shot prediction problem, optimizing only the next item and ignoring long-term user engagement. 
 
-## Repository layout
+In this project, we instead formulate movie recommendation as a **sequential decision-making** problem and build a **Deep Q-Learning (DQN)**–based system. By modeling user–system interactions as a **Markov Decision Process (MDP)**, the agent learns to maximize the discounted cumulative reward, enabling long-term engagement and adaptive, personalized recommendations.
+
+
+## Repository Layout
 
 ```
 ECE1508RL_project/
 ├── data/
 │   └── ml-latest-small/        # Raw CSVs from MovieLens (ratings, movies, tags, links)
-├── models/                     # Trained DQN weights, logs, and optional plots
-├── reports/                    # Generated plots and evaluation figures
+├── models/                     # Trained DQN models
+├── reports/                    # All logs, generated plots and evaluation figures
 ├── src/
 │   ├── __init__.py   
 │   ├── candidate_re_rank.py    # Logic for re-ranking candidates          
@@ -35,6 +38,31 @@ ECE1508RL_project/
 
 ```
 
+## Models and Baselines
+
+We implemented the following methods and agents. Detailed implementations can be found in `src/agent` and `src/utils/collaborative.py`.
+
+### Baselines
+
+- **Random Recommender**: Shuffles the movie dataset and randomly selects a list of movies
+
+- **Collaborative Filtering (CF)**: Uses user–user similarity based on historical ratings to generate recommendations
+
+- **Standard DQN**: Our base RL benchmark using a fully connected network with a flattened sliding-window state
+
+---
+
+### Advanced RL Agents
+
+- **Dueling DQN**: Splits the Q-network into separate Value (V(s)) and Advantage (A(s, a)) streams to improve learning efficiency
+
+- **Double DQN (DDQN)**: Reduces Q-value overestimation by decoupling action selection and target evaluation
+
+- **GRU-DQN**: Uses a GRU encoder to model temporal dependencies in the user’s viewing history
+
+- **GRU-DDQN**: Combines GRU-based sequence encoding with the stability benefits of the Double DQN objective
+
+
 ## Setup
 
 1. **Download data**  
@@ -48,7 +76,7 @@ ECE1508RL_project/
 
 3. **Install dependencies**  
    ```bash
-   pip install pandas numpy matplotlib torch
+   pip install -r requirements.txt
    ```
 
 ## How to Run
@@ -64,7 +92,7 @@ Run the main script to train the agent on user ratings
 python src/main.py
 ````
 
-  * **Output:** Saves a timestamped model to `models/` (e.g., `MLP_DDQN_20251201_134722.pt`), a training log to `reports`, (e.g.`\training_log_20251201_140613.log` a training plot to `reports/figures/`.
+  * **Output:** Saves a timestamped model to `models/` (e.g., `GRU_DDQN_20251205_220227.pt`), a training log with all training information to `reports`, (e.g.`\training_log_20251205_220227.log` a training plot to `reports/figures/`.
 
 
 ### 3. Fine-Tune 
@@ -76,13 +104,22 @@ Fine tune the model with:
 python src/fine_tune_candidate.py --model-path "models/MLP_DDQN_20251201_134722.pt"
 ```
 
-  * **Output:** Saves a new model ending in `_finetuned.pt` (e.g., `MLP_DDQN_20251201_134722_finetuned.pt`).
+  * **Output:** Saves a new model ending in `_finetuned.pt` (e.g., `GRU_DDQN_20251205_220227_finetuned`), a finetunning log with all detail information to `reports`, (e.g.`fine_tune_log_20251205_221032.log`)
+
 
 ### 4. Evaluate a Model
 
-Evaluate trained model against the baselines 
+Evaluate the trained model against the baselines using the following metrics (covers four key dimensions: Accuracy, Ranking Quality, Catalog Health, and Diversity):
+
+* **Accuracy & Ranking:** We use **HitRate@K** (to measure successful retrieval) and **NDCG@K** (Normalized Discounted Cumulative Gain) to assess the position-aware quality of the recommendations.
+* **Diversity & Health:** We monitor **Catalog Coverage**, **Novelty**, and **Intra-List Diversity (ILD)** to ensure the model avoids popularity bias and provides varied content.
+* **Learning Performance:** We also track the **Average Cumulative Reward** to verify the agent's learning convergence over time.
+
+To run the evaluation, replace the filename with the actual saved model path:
 
 ```bash
-# Replace the filename with the  actual saved model path
+# Replace the filename with the actual saved model path
 python src/evaluation.py --model-type custom --custom-path "models/MLP_DDQN_20251201_134722.pt"
 ```
+
+  * **Output:** a evalaution log with all detail information to `reports`, (e.g.`evaluation_log_20251205_220602.log`)
