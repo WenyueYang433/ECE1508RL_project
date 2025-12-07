@@ -1,0 +1,172 @@
+--- Starting Training: MLP_DDQN 20251207_142654 ---
+--- Hyperparameters ---
+device: cuda
+seed: 42
+keep_top_n: 1000
+min_ratings: 5
+val_ratio: 0.2
+data_rel_path: data/ml-latest-small
+model_base: models/dqn_movielens.pt
+model_finetuned: models/dqn_movielens_finetuned.pt
+plot_summary: reports/figures/training_summary.png
+model_arch: MLP
+use_double_q: True
+history_window: 10
+hidden_dim: 256
+dropout_rate: 0.2
+buffer_size: 100000
+batch_size: 256
+learning_rate: 0.0003
+gamma: 0.9
+target_update: 1000
+base_n_updates: 10000
+log_interval: 500
+weight_decay: 1e-05
+repeat_penalty: 1
+popularity_penalty: 0.2
+ft_n_steps: 2000
+ft_batch_size: 32
+ft_lr: 1e-05
+ft_weight_decay: 1e-05
+margin: 0.5
+neg_per_pos: 5
+use_candidates: True
+candidate_k: 200
+frac_candidate: 0.5
+---- Architecture: MLP | Algorithm: DDQN ------
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+[RecoEnv] state_dim=200, n_actions=1000, repeat_penalty=1, popularity_penalty=0.2  
+Mode=Flattened 
+train_transitions=96990, val_transitions=24252
+[RecoEnv] reward(train): min=-1.426, max=0.997, mean=-0.118
+Sample train rewards: [ 0.8776923  -0.5         0.4823077  -0.5         0.97692305 -0.5
+  0.4076923  -0.5         0.90076923 -0.5         0.47230768 -0.5
+  0.47153845 -0.5         0.8676923  -0.5         0.43384615 -0.5
+  0.44846153 -0.5       ]
+DQN(
+  (fc1): Linear(in_features=200, out_features=256, bias=True)
+  (fc2): Linear(in_features=256, out_features=128, bias=True)
+  (fc3): Linear(in_features=128, out_features=64, bias=True)
+  (out): Linear(in_features=64, out_features=1000, bias=True)
+  (act): ReLU()
+  (dropout): Dropout(p=0.2, inplace=False)
+)
+[Agent] Preloaded 96990 transitions into replay buffer.
+Loading Train/Validation Data...
+--- Loading Data (Top 1000 movies, Min 5 ratings) ---
+Total unique movies with ratings before filtering: 9724
+Filtered to top 1000 movies. Remaining Ratings: 61256
+Filtered users with < 5 ratings. Ratings dropped: 3
+Starting training for 10000 steps...
+Step  100 | Loss: 0.1337 | NDCG@10: 0.1205 | Avg Q: -0.003 | Reward: 0.359
+--- Best Model Saved!
+Step  200 | Loss: 0.1310 | NDCG@10: 0.1330 | Avg Q: -0.028 | Reward: 0.685
+--- Best Model Saved!
+Step  300 | Loss: 0.1293 | NDCG@10: 0.1892 | Avg Q: -0.041 | Reward: 0.924
+--- Best Model Saved!
+Step  400 | Loss: 0.1280 | NDCG@10: 0.1601 | Avg Q: -0.050 | Reward: 0.826
+Step  500 | Loss: 0.1268 | NDCG@10: 0.1796 | Avg Q: -0.045 | Reward: 0.880
+Step  600 | Loss: 0.1263 | NDCG@10: 0.1725 | Avg Q: -0.090 | Reward: 0.989
+Step  700 | Loss: 0.1256 | NDCG@10: 0.1881 | Avg Q: -0.134 | Reward: 0.935
+Step  800 | Loss: 0.1250 | NDCG@10: 0.1658 | Avg Q: -0.148 | Reward: 0.967
+Step  900 | Loss: 0.1244 | NDCG@10: 0.1626 | Avg Q: -0.166 | Reward: 0.880
+Step 1000 | Loss: 0.1239 | NDCG@10: 0.1654 | Avg Q: -0.157 | Reward: 0.924
+Step 1100 | Loss: 0.1260 | NDCG@10: 0.1562 | Avg Q: -0.042 | Reward: 0.783
+Step 1200 | Loss: 0.1272 | NDCG@10: 0.1437 | Avg Q: 0.055 | Reward: 0.761
+Step 1300 | Loss: 0.1268 | NDCG@10: 0.2110 | Avg Q: 0.104 | Reward: 0.902
+--- Best Model Saved!
+Step 1400 | Loss: 0.1263 | NDCG@10: 0.1802 | Avg Q: 0.089 | Reward: 0.924
+Step 1500 | Loss: 0.1257 | NDCG@10: 0.1681 | Avg Q: 0.107 | Reward: 0.717
+Step 1600 | Loss: 0.1251 | NDCG@10: 0.1834 | Avg Q: 0.084 | Reward: 0.793
+Step 1700 | Loss: 0.1245 | NDCG@10: 0.1754 | Avg Q: 0.100 | Reward: 0.957
+Step 1800 | Loss: 0.1241 | NDCG@10: 0.1651 | Avg Q: 0.115 | Reward: 0.880
+Step 1900 | Loss: 0.1236 | NDCG@10: 0.1675 | Avg Q: 0.115 | Reward: 0.935
+Step 2000 | Loss: 0.1231 | NDCG@10: 0.1402 | Avg Q: 0.095 | Reward: 0.870
+Step 2100 | Loss: 0.1233 | NDCG@10: 0.1321 | Avg Q: 0.348 | Reward: 0.826
+Step 2200 | Loss: 0.1229 | NDCG@10: 0.1381 | Avg Q: 0.374 | Reward: 0.826
+Step 2300 | Loss: 0.1226 | NDCG@10: 0.1454 | Avg Q: 0.396 | Reward: 0.848
+Step 2400 | Loss: 0.1223 | NDCG@10: 0.1626 | Avg Q: 0.422 | Reward: 0.674
+Step 2500 | Loss: 0.1220 | NDCG@10: 0.1656 | Avg Q: 0.407 | Reward: 0.685
+Step 2600 | Loss: 0.1217 | NDCG@10: 0.1629 | Avg Q: 0.428 | Reward: 0.750
+Step 2700 | Loss: 0.1213 | NDCG@10: 0.1852 | Avg Q: 0.375 | Reward: 0.826
+Step 2800 | Loss: 0.1210 | NDCG@10: 0.1699 | Avg Q: 0.398 | Reward: 0.772
+Step 2900 | Loss: 0.1207 | NDCG@10: 0.1677 | Avg Q: 0.395 | Reward: 0.826
+Step 3000 | Loss: 0.1203 | NDCG@10: 0.1674 | Avg Q: 0.428 | Reward: 0.924
+Step 3100 | Loss: 0.1205 | NDCG@10: 0.1667 | Avg Q: 0.761 | Reward: 0.870
+Step 3200 | Loss: 0.1203 | NDCG@10: 0.1594 | Avg Q: 0.730 | Reward: 0.717
+Step 3300 | Loss: 0.1201 | NDCG@10: 0.1744 | Avg Q: 0.729 | Reward: 0.837
+Step 3400 | Loss: 0.1199 | NDCG@10: 0.2230 | Avg Q: 0.728 | Reward: 1.065
+--- Best Model Saved!
+Step 3500 | Loss: 0.1197 | NDCG@10: 0.2140 | Avg Q: 0.736 | Reward: 1.109
+Step 3600 | Loss: 0.1196 | NDCG@10: 0.1871 | Avg Q: 0.764 | Reward: 1.011
+Step 3700 | Loss: 0.1193 | NDCG@10: 0.1907 | Avg Q: 0.748 | Reward: 0.880
+Step 3800 | Loss: 0.1191 | NDCG@10: 0.1639 | Avg Q: 0.728 | Reward: 0.783
+Step 3900 | Loss: 0.1188 | NDCG@10: 0.2006 | Avg Q: 0.736 | Reward: 0.924
+Step 4000 | Loss: 0.1186 | NDCG@10: 0.1756 | Avg Q: 0.741 | Reward: 0.935
+Step 4100 | Loss: 0.1188 | NDCG@10: 0.2000 | Avg Q: 1.113 | Reward: 0.978
+Step 4200 | Loss: 0.1187 | NDCG@10: 0.2019 | Avg Q: 1.052 | Reward: 0.946
+Step 4300 | Loss: 0.1187 | NDCG@10: 0.2428 | Avg Q: 1.082 | Reward: 1.283
+--- Best Model Saved!
+Step 4400 | Loss: 0.1186 | NDCG@10: 0.2083 | Avg Q: 1.112 | Reward: 1.022
+Step 4500 | Loss: 0.1185 | NDCG@10: 0.1998 | Avg Q: 1.080 | Reward: 1.033
+Step 4600 | Loss: 0.1185 | NDCG@10: 0.1873 | Avg Q: 1.104 | Reward: 0.946
+Step 4700 | Loss: 0.1184 | NDCG@10: 0.1825 | Avg Q: 1.123 | Reward: 0.946
+Step 4800 | Loss: 0.1183 | NDCG@10: 0.1832 | Avg Q: 1.111 | Reward: 0.870
+Step 4900 | Loss: 0.1182 | NDCG@10: 0.1949 | Avg Q: 1.113 | Reward: 1.076
+Step 5000 | Loss: 0.1180 | NDCG@10: 0.1883 | Avg Q: 1.104 | Reward: 0.870
+Step 5100 | Loss: 0.1183 | NDCG@10: 0.2020 | Avg Q: 1.513 | Reward: 0.913
+Step 5200 | Loss: 0.1183 | NDCG@10: 0.2128 | Avg Q: 1.453 | Reward: 0.891
+Step 5300 | Loss: 0.1184 | NDCG@10: 0.1843 | Avg Q: 1.510 | Reward: 0.826
+Step 5400 | Loss: 0.1184 | NDCG@10: 0.1695 | Avg Q: 1.505 | Reward: 0.696
+Step 5500 | Loss: 0.1185 | NDCG@10: 0.1702 | Avg Q: 1.449 | Reward: 0.772
+Step 5600 | Loss: 0.1185 | NDCG@10: 0.1846 | Avg Q: 1.460 | Reward: 0.717
+Step 5700 | Loss: 0.1185 | NDCG@10: 0.1896 | Avg Q: 1.449 | Reward: 0.793
+Step 5800 | Loss: 0.1185 | NDCG@10: 0.1801 | Avg Q: 1.481 | Reward: 0.870
+Step 5900 | Loss: 0.1185 | NDCG@10: 0.1916 | Avg Q: 1.450 | Reward: 0.717
+Step 6000 | Loss: 0.1185 | NDCG@10: 0.1626 | Avg Q: 1.478 | Reward: 0.837
+Step 6100 | Loss: 0.1188 | NDCG@10: 0.1872 | Avg Q: 1.909 | Reward: 0.924
+Step 6200 | Loss: 0.1190 | NDCG@10: 0.1957 | Avg Q: 1.894 | Reward: 0.902
+Step 6300 | Loss: 0.1191 | NDCG@10: 0.1819 | Avg Q: 1.872 | Reward: 0.793
+Step 6400 | Loss: 0.1192 | NDCG@10: 0.1706 | Avg Q: 1.904 | Reward: 0.696
+Step 6500 | Loss: 0.1193 | NDCG@10: 0.1830 | Avg Q: 1.968 | Reward: 0.924
+Step 6600 | Loss: 0.1195 | NDCG@10: 0.1849 | Avg Q: 1.866 | Reward: 0.826
+Step 6700 | Loss: 0.1195 | NDCG@10: 0.1808 | Avg Q: 1.828 | Reward: 0.804
+Step 6800 | Loss: 0.1196 | NDCG@10: 0.1594 | Avg Q: 1.861 | Reward: 0.685
+Step 6900 | Loss: 0.1197 | NDCG@10: 0.1840 | Avg Q: 1.900 | Reward: 0.717
+Step 7000 | Loss: 0.1198 | NDCG@10: 0.1453 | Avg Q: 1.877 | Reward: 0.783
+Step 7100 | Loss: 0.1202 | NDCG@10: 0.2196 | Avg Q: 2.256 | Reward: 0.826
+Step 7200 | Loss: 0.1205 | NDCG@10: 0.1818 | Avg Q: 2.311 | Reward: 0.935
+Step 7300 | Loss: 0.1206 | NDCG@10: 0.1548 | Avg Q: 2.341 | Reward: 0.739
+Step 7400 | Loss: 0.1208 | NDCG@10: 0.1734 | Avg Q: 2.302 | Reward: 0.717
+Step 7500 | Loss: 0.1211 | NDCG@10: 0.1895 | Avg Q: 2.298 | Reward: 0.804
+Step 7600 | Loss: 0.1212 | NDCG@10: 0.1811 | Avg Q: 2.336 | Reward: 0.630
+Step 7700 | Loss: 0.1214 | NDCG@10: 0.1627 | Avg Q: 2.274 | Reward: 0.630
+Step 7800 | Loss: 0.1216 | NDCG@10: 0.1542 | Avg Q: 2.284 | Reward: 0.685
+Step 7900 | Loss: 0.1217 | NDCG@10: 0.1914 | Avg Q: 2.293 | Reward: 0.739
+Step 8000 | Loss: 0.1219 | NDCG@10: 0.1694 | Avg Q: 2.288 | Reward: 0.728
+Step 8100 | Loss: 0.1223 | NDCG@10: 0.1428 | Avg Q: 2.733 | Reward: 0.804
+Step 8200 | Loss: 0.1227 | NDCG@10: 0.1656 | Avg Q: 2.661 | Reward: 0.630
+Step 8300 | Loss: 0.1230 | NDCG@10: 0.1929 | Avg Q: 2.716 | Reward: 0.772
+Step 8400 | Loss: 0.1232 | NDCG@10: 0.1993 | Avg Q: 2.708 | Reward: 0.739
+Step 8500 | Loss: 0.1235 | NDCG@10: 0.1869 | Avg Q: 2.785 | Reward: 0.739
+Step 8600 | Loss: 0.1237 | NDCG@10: 0.1737 | Avg Q: 2.775 | Reward: 0.728
+Step 8700 | Loss: 0.1240 | NDCG@10: 0.1622 | Avg Q: 2.673 | Reward: 0.620
+Step 8800 | Loss: 0.1242 | NDCG@10: 0.1875 | Avg Q: 2.717 | Reward: 0.902
+Step 8900 | Loss: 0.1245 | NDCG@10: 0.1741 | Avg Q: 2.753 | Reward: 0.652
+Step 9000 | Loss: 0.1247 | NDCG@10: 0.1791 | Avg Q: 2.762 | Reward: 0.717
+Step 9100 | Loss: 0.1252 | NDCG@10: 0.1752 | Avg Q: 3.245 | Reward: 0.685
+Step 9200 | Loss: 0.1257 | NDCG@10: 0.1790 | Avg Q: 3.326 | Reward: 0.924
+Step 9300 | Loss: 0.1262 | NDCG@10: 0.1865 | Avg Q: 3.252 | Reward: 0.761
+Step 9400 | Loss: 0.1266 | NDCG@10: 0.2027 | Avg Q: 3.282 | Reward: 0.826
+Step 9500 | Loss: 0.1270 | NDCG@10: 0.2100 | Avg Q: 3.254 | Reward: 0.815
+Step 9600 | Loss: 0.1274 | NDCG@10: 0.1884 | Avg Q: 3.294 | Reward: 0.761
+Step 9700 | Loss: 0.1277 | NDCG@10: 0.1810 | Avg Q: 3.271 | Reward: 0.772
+Step 9800 | Loss: 0.1280 | NDCG@10: 0.1744 | Avg Q: 3.238 | Reward: 0.652
+Step 9900 | Loss: 0.1284 | NDCG@10: 0.1793 | Avg Q: 3.292 | Reward: 0.685
+Step 10000 | Loss: 0.1287 | NDCG@10: 0.1894 | Avg Q: 3.250 | Reward: 0.761
+Training Complete!
+ > Model saved to: C:\Users\87885\OneDrive\Desktop\new\ECE1508RL_project\ECE1508RL_project\models\MLP_DDQN_20251207_142654.pt
+ > Plot saved to:  C:\Users\87885\OneDrive\Desktop\new\ECE1508RL_project\ECE1508RL_project\reports\figures\MLP_DDQN_20251207_142654.png
+ > Log saved to:   C:\Users\87885\OneDrive\Desktop\new\ECE1508RL_project\ECE1508RL_project\reports\training_log_20251207_142654.log
