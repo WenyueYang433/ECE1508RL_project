@@ -1,12 +1,19 @@
-# baselines/collaborative.py
 import pandas as pd
 import numpy as np
 
 
-def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: int = 10, k_neighbors: int = 40, min_overlap: int = 3,) -> pd.DataFrame:
+def collaborative_filtering_recommend(
+    df: pd.DataFrame,
+    user_id: int,
+    n_recs: int = 10,
+    k_neighbors: int = 40,
+    min_overlap: int = 3,
+) -> pd.DataFrame:
     df = df[["userId", "movieId", "rating"]].copy()
 
-    rating_mat = df.pivot_table( index="userId", columns="movieId", values="rating", aggfunc="mean")
+    rating_mat = df.pivot_table(
+        index="userId", columns="movieId", values="rating", aggfunc="mean"
+    )
 
     if user_id not in rating_mat.index:
         raise ValueError(f"user_id {user_id} not in rating matrix")
@@ -18,7 +25,8 @@ def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: in
 
     sims = []
     for other_user, row in rating_centered.iterrows():
-        if other_user == user_id: continue
+        if other_user == user_id:
+            continue
 
         mask = target_centered.notna() & row.notna()
         if mask.sum() < min_overlap:
@@ -34,17 +42,17 @@ def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: in
             sims.append((other_user, 0.0))
             continue
 
-        sims.append((other_user, float(np.dot(v1, v2) / (norm1 * norm2)) ))
+        sims.append((other_user, float(np.dot(v1, v2) / (norm1 * norm2))))
     sims_sorted = sorted(sims, key=lambda x: x[1], reverse=True)
     neighbors = [(u, s) for (u, s) in sims_sorted if s > 0][:k_neighbors]
 
-    if len(neighbors) == 0:  return pd.DataFrame(columns=["movieId", "score"])
+    if len(neighbors) == 0:
+        return pd.DataFrame(columns=["movieId", "score"])
 
     neighbor_ids = [u for (u, s) in neighbors]
     neighbor_sims = np.array([s for (u, s) in neighbors], dtype=np.float32)
 
-    neighbor_centered = rating_centered.loc[neighbor_ids]  # [K, n_items]
-
+    neighbor_centered = rating_centered.loc[neighbor_ids]
 
     watched_mask = target_ratings.notna()
     candidate_mask = ~watched_mask & (neighbor_centered.notna().sum(axis=0) > 0)
@@ -53,21 +61,21 @@ def collaborative_filtering_recommend( df: pd.DataFrame, user_id: int,n_recs: in
     if len(candidate_items) == 0:
         return pd.DataFrame(columns=["movieId", "score"])
 
-    neighbor_ratings = rating_mat.loc[neighbor_ids] # [K, n_items]
+    neighbor_ratings = rating_mat.loc[neighbor_ids]
     scores = []
 
     for m in candidate_items:
-        col_ratings = neighbor_ratings[m] 
+        col_ratings = neighbor_ratings[m]
         mask = col_ratings.notna()
-        
-        if mask.sum() == 0: continue
-        pred_score = np.sum(neighbor_sims[mask.values] *  col_ratings[mask].values)
+
+        if mask.sum() == 0:
+            continue
+        pred_score = np.sum(neighbor_sims[mask.values] * col_ratings[mask].values)
         scores.append((m, pred_score))
 
     if len(scores) == 0:
         return pd.DataFrame(columns=["movieId", "score"])
 
-    #top-n
     scores_sorted = sorted(scores, key=lambda x: x[1], reverse=True)[:n_recs]
     rec_df = pd.DataFrame(scores_sorted, columns=["movieId", "score"])
 

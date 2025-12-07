@@ -25,12 +25,7 @@ class MovieLensStats:
         }
 
     def rating_distribution(self):
-        return (
-            self.loader.ratings["rating"]
-            .value_counts()
-            .sort_index()
-            .astype(int)
-        )
+        return self.loader.ratings["rating"].value_counts().sort_index().astype(int)
 
     def top_genres(self, top_k=10):
         genre_counter = Counter()
@@ -44,6 +39,7 @@ class MovieLensStats:
         if tag_counts.empty:
             return 0.0
         return float(tag_counts.mean())
+
 
 def plot_rating_hist(ratings):
     plt.figure(figsize=(6, 4))
@@ -84,4 +80,3 @@ if __name__ == "__main__":
     plot_rating_hist(loader.ratings["rating"])
     plot_top_genres(stats.top_genres())
     plt.show()
-

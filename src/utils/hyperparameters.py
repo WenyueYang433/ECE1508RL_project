@@ -1,53 +1,43 @@
 class Hyperparameters:
     def __init__(self):
-        # --- GLOBAL SETTINGS ---
-        self.device = "cuda" # or "cpu"
+        self.device = "cuda"
         self.seed = 42
-        self.keep_top_n = 1000  # Number of movies to consider for action space 
-        self.min_ratings = 5    # User filter (Cold Start Fix)
-        self.val_ratio = 0.2    # Train/Test split
-        
-        # --- PATHS ---
-        self.data_rel_path = "data/ml-latest-small" 
-        self.model_base = "models/dqn_movielens.pt" #no longer in use 
-        self.model_finetuned = "models/dqn_movielens_finetuned.pt" #no longer in use 
-        self.plot_summary = "reports/figures/training_summary.png" #no longer in use 
-        
-        # --- MODEL CONFIGURATION ---
-        # Architecture options: "MLP" (Standard), "Dueling", "GRU"
-        self.model_arch =  "MLP" 
-        
-        # Algorithm variant: True = DDQN, False = DQN
-        self.use_double_q = True
-        
-        # --- SEQUENTIAL SETTINGS---
-        self.history_window = 10  # In state, use last N movies
+        self.keep_top_n = 1000
+        self.min_ratings = 5
+        self.val_ratio = 0.2
 
-        # --- NN ARCHITECTURE ---
-        self.hidden_dim = 256     # width first layer 
-        self.dropout_rate = 0.2 
-        
-        # --- PHASE 1: BASE TRAINING ---
+        self.data_rel_path = "data/ml-latest-small"
+        self.model_base = "models/dqn_movielens.pt"
+        self.model_finetuned = "models/dqn_movielens_finetuned.pt"
+        self.plot_summary = "reports/figures/training_summary.png"
+
+        self.model_arch = "MLP"  # MLP, Dueling, GRU
+
+        self.use_double_q = True
+
+        self.history_window = 10
+
+        self.hidden_dim = 256
+        self.dropout_rate = 0.2
+
         self.buffer_size = 100_000
         self.batch_size = 256
-        self.learning_rate = 3e-4      
+        self.learning_rate = 3e-4
         self.gamma = 0.9
         self.target_update = 1000
         self.base_n_updates = 10000
         self.log_interval = 500
         self.weight_decay = 1e-5
-        self.repeat_penalty = 1 # this param is NO longer in use because we implemented action masking
-        self.popularity_penalty = 0.2 #0.5 Extreme, 0.0 no penalty, exp result shows 0.1 or 0.2 have better result
-        
-        # --- PHASE 2: FINE-TUNING (Hinge Loss) ---
+        self.repeat_penalty = 1
+        self.popularity_penalty = 0.2
+
         self.ft_n_steps = 2000
-        self.ft_batch_size = 32     # Smaller batch for ranking
-        self.ft_lr = 1e-5           # Very small to preserve knowledge
+        self.ft_batch_size = 32
+        self.ft_lr = 1e-5
         self.ft_weight_decay = 1e-5
-        
-        # Ranking Logic
-        self.margin = 0.5           # Hinge margin
-        self.neg_per_pos = 5        # Negatives per positive
-        self.use_candidates = True  # Hard Negative Mining
-        self.candidate_k = 200      # Size of candidate pool
-        self.frac_candidate = 0.5   # 50% Hard Negatives, 50% Random
+
+        self.margin = 0.5
+        self.neg_per_pos = 5
+        self.use_candidates = True
+        self.candidate_k = 200
+        self.frac_candidate = 0.5

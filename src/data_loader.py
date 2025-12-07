@@ -49,4 +49,3 @@ class MovieLensLoader:
 if __name__ == "__main__":
     MovieLensLoader("data/ml-latest-small").load_all().validate()
     print("MovieLens data loaded.")
-

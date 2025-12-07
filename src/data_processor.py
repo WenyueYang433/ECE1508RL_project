@@ -23,43 +23,37 @@ class DatasetPrep:
             return 0.0
         segment = title[start + 1 : end]
         return float(segment) if segment.isdigit() else 0.0
-    
-    #get years, normalizes to 0,1, to avoid over large feature issue (compare to genre 0,1)
+
     def _process_years(self, titles: pd.Series) -> pd.Series:
         years = titles.apply(self._extract_year).astype("float32")
-
-        #impute missing years(0.0) with the median of valid years
-        #to avoid gradients of 0.0 movies be massive compared to normal movies
         valid_mask = years > 0
         if valid_mask.any():
             median_year = years[valid_mask].median()
             years[~valid_mask] = median_year
 
-        #normalize to 0, 1
         min_y = years.min()
         max_y = years.max()
-        
+
         if max_y > min_y:
             years = (years - min_y) / (max_y - min_y)
         else:
-            years[:] = 0.0 # corner case: all movies from same year
-            
+            years[:] = 0.0
+
         return years
-        
 
     def encode_movies(self, keep_top_n: int = 1000) -> pd.DataFrame:
-        
-        # calculate movie popularity based on rating counts, keep only the top N
         pop_counts = self.ratings["movieId"].value_counts()
         print(f"Total unique movies with ratings before filtering: {len(pop_counts)}")
         top_ids = pop_counts.nlargest(keep_top_n).index
         self.movies = self.movies[self.movies["movieId"].isin(top_ids)].copy()
         self.ratings = self.ratings[self.ratings["movieId"].isin(top_ids)].copy()
-        
-        print(f"Filtered to top {keep_top_n} movies. Remaining Ratings: {len(self.ratings)}")
-        
+
+        print(
+            f"Filtered to top {keep_top_n} movies. Remaining Ratings: {len(self.ratings)}"
+        )
+
         genres = self.movies["genres"].str.get_dummies("|").astype("float32")
-        
+
         self.movies["year"] = self._process_years(self.movies["title"])
 
         codes = pd.Categorical(self.movies["movieId"])
@@ -76,15 +70,15 @@ class DatasetPrep:
         )
         return pd.concat([base, genres], axis=1)
 
-    def encode_users(self,min_ratings: int = 5) -> pd.DataFrame:
-        
-        # for cold start issue: filter out users with num of ratings < min_ratings
+    def encode_users(self, min_ratings: int = 5) -> pd.DataFrame:
         user_counts = self.ratings["userId"].value_counts()
         valid_users = user_counts[user_counts >= min_ratings].index
         before_count = len(self.ratings)
         self.ratings = self.ratings[self.ratings["userId"].isin(valid_users)].copy()
-        print(f"Filtered users with < {min_ratings} ratings. Ratings dropped: {before_count - len(self.ratings)}")
-        
+        print(
+            f"Filtered users with < {min_ratings} ratings. Ratings dropped: {before_count - len(self.ratings)}"
+        )
+
         users = sorted(self.ratings["userId"].unique())
         self._user_ids = users
         return pd.DataFrame(
@@ -144,4 +138,3 @@ if __name__ == "__main__":
     print(user_features.head(3))
     print("\nRating sample:")
     print(rating_table.head(3))
-
