@@ -23,7 +23,7 @@ def main():
     is_gru = hp.model_arch == "GRU"
     algo_type = "DDQN" if hp.use_double_q else "DQN"
 
-    run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # keep artifacts grouped by run
 
     data_dir = PROJECT_ROOT / hp.data_rel_path
     model_name_str = f"{hp.model_arch}_{algo_type}"

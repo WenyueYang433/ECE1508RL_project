@@ -56,7 +56,8 @@ def build_offline_transitions(
         ratings = user_hist["rating"].to_numpy(dtype=np.float32)
 
         if len(movie_keys) < 2:
-            continue
+            # nothing to learn if user barely interacted
+            continue  
 
         history = deque([empty_feat] * history_window, maxlen=history_window)
         watched = set()
@@ -71,7 +72,7 @@ def build_offline_transitions(
             rating_val = ratings[idx]
 
             already_seen = action_key in watched
-            base_reward = (rating_val - 3.0) / 2.0
+            base_reward = (rating_val - 3.0) / 2.0  # center ratings around 0
             r_penalty = repeat_penalty if already_seen else 0.0
             reward = base_reward - r_penalty
 
@@ -102,7 +103,7 @@ def build_offline_transitions(
             transitions["done"].append(done)
 
             neg_action = np.random.randint(0, item_matrix.shape[0])
-            neg_reward = -0.5
+            neg_reward = -0.5  # synthetic negative to widen coverage
 
             transitions["state"].append(state)
             transitions["action"].append(int(neg_action))

@@ -113,7 +113,7 @@ def fine_tune(model_path_str: str):
     for _, row in train_df.iterrows():
         user_pos[int(row["user_key"])].append(int(row["movie_key"]))
 
-    eligible_users = [u for u, poses in user_pos.items() if len(poses) > 0]
+    eligible_users = [u for u, poses in user_pos.items() if len(poses) > 0]  # users with at least one positive
 
     device = torch.device(hp.device if torch.cuda.is_available() else "cpu")
 

@@ -73,7 +73,7 @@ class Agent:
             weight_decay=getattr(self.hp, "weight_decay", 1e-5),
         )
 
-        self._preload_buffer_from_env()
+        self._preload_buffer_from_env()  # dump offline transitions into replay
 
     def _preload_buffer_from_env(self, split: str = "train"):
         trans = self.env.get_all_transitions(split=split)
@@ -110,7 +110,8 @@ class Agent:
 
         for step in range(1, n_updates + 1):
             if len(self.replay_buffer) < self.hp.batch_size:
-                continue
+                # not enough to sample yet
+                continue  
 
             self.apply_SGD(ended=(step % self.hp.target_update == 0))
 
@@ -141,7 +142,7 @@ class Agent:
                 ndcg = metrics["NDCG@10"]
                 realized_reward = metrics["AverageReward"]
 
-                dummy_keys = list(val_data["user_state"].keys())[:32]
+                dummy_keys = list(val_data["user_state"].keys())[:32]  # quick sanity batch
                 dummy_states = np.array([val_data["user_state"][k] for k in dummy_keys])
                 t_states = torch.tensor(
                     dummy_states, dtype=torch.float32, device=self.device
@@ -167,8 +168,10 @@ class Agent:
 
     def select_action(self, state):
         if np.random.rand() < self.epsilon:
+            # explore
             action = np.random.randint(self.num_actions)
         else:
+            # exploit
             state_t = torch.tensor(
                 state, dtype=torch.float32, device=self.device
             ).unsqueeze(
@@ -217,11 +220,11 @@ class Agent:
 
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.onlineDQN.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(self.onlineDQN.parameters(), max_norm=1.0)  # keep grads sane
         self.optimizer.step()
 
         self.current_loss += loss.item()
         self.episode_counts += 1
 
         if ended:
-            self.targetDQN.load_state_dict(self.onlineDQN.state_dict())
+            self.targetDQN.load_state_dict(self.onlineDQN.state_dict())  # periodic target sync
